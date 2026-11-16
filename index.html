@@ -113,23 +113,34 @@
   /* ---------- Touch controls ---------- */
   #touch { position: fixed; inset: 0; z-index: 5; }
   #look-zone { position: absolute; inset: 0; }
-  #move-zone { position: absolute; left: 0; bottom: 0; width: 42%; height: 70%; }
-  #stick { position: absolute; width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.06), rgba(255,255,255,0.12)); border: 2px solid rgba(255,255,255,0.22); opacity: 0.55; transition: opacity 0.15s; pointer-events: none; }
-  #stick.active { opacity: 1; }
-  #stick i { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.65), rgba(255,255,255,0.25)); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
-  #stick.sprint { border-color: var(--accent); }
-  #stick.sprint i { background: radial-gradient(circle at 40% 35%, #ffb38a, var(--accent)); }
-  .tbtn { position: absolute; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; background: radial-gradient(circle at 50% 35%, rgba(40,52,78,0.75), rgba(10,14,22,0.7)); border: 2px solid rgba(255,255,255,0.2); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
-  .tbtn svg { width: 46%; height: 46%; margin-bottom: 1px; }
-  .tbtn.on, .tbtn.pressed { border-color: var(--accent); background: radial-gradient(circle at 50% 35%, rgba(255,120,60,0.85), rgba(200,60,20,0.75)); }
-  #b-fire { width: 96px; height: 96px; right: calc(var(--safe-r) + 30px); bottom: 92px; border-color: rgba(255,106,43,0.8); background: radial-gradient(circle at 50% 35%, rgba(255,110,50,0.55), rgba(140,40,10,0.55)); font-size: 13px; }
-  #b-fire2 { width: 64px; height: 64px; left: calc(var(--safe-l) + 18px); top: 34%; border-color: rgba(255,106,43,0.7); background: radial-gradient(circle at 50% 35%, rgba(255,110,50,0.45), rgba(140,40,10,0.45)); }
-  #b-aim  { width: 66px; height: 66px; right: calc(var(--safe-r) + 140px); bottom: 150px; }
-  #b-jump { width: 62px; height: 62px; right: calc(var(--safe-r) + 6px); bottom: 200px; }
-  #b-crouch { width: 58px; height: 58px; right: calc(var(--safe-r) + 140px); bottom: 74px; }
-  #b-reload { width: 54px; height: 54px; right: calc(var(--safe-r) + 96px); bottom: 220px; }
-  #b-pause { width: 42px; height: 42px; right: var(--safe-r); top: 12px; border-radius: 12px; }
+  #dpad { position: absolute; left: calc(var(--safe-l) + 4px); bottom: 28px; width: 186px; height: 186px; touch-action: none; }
+  #dpad .arr { position: absolute; width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: rgba(20,28,44,0.72); border: 2px solid rgba(255,255,255,0.35); box-shadow: 0 6px 18px rgba(0,0,0,0.35); pointer-events: none; }
+  #dpad .arr svg { width: 60%; height: 60%; }
+  #dpad .arr.on { background: rgba(255,106,43,0.85); border-color: #ffb38a; }
+  #dpad .up { left: 61px; top: 0; } #dpad .down { left: 61px; bottom: 0; }
+  #dpad .left { left: 0; top: 61px; } #dpad .right { right: 0; top: 61px; }
+  #dpad .hub { position: absolute; left: 73px; top: 73px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.2); pointer-events: none; }
+  .tbtn { position: absolute; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; background: radial-gradient(circle at 50% 35%, rgba(40,52,78,0.8), rgba(10,14,22,0.75)); border: 2px solid rgba(255,255,255,0.35); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; box-shadow: 0 6px 18px rgba(0,0,0,0.35); touch-action: none; }
+  .tbtn svg { width: 44%; height: 44%; margin-bottom: 1px; }
+  .tbtn.on, .tbtn.pressed { border-color: #ffb38a; background: radial-gradient(circle at 50% 35%, rgba(255,120,60,0.9), rgba(200,60,20,0.8)); }
+  #b-fire { width: 96px; height: 96px; right: calc(var(--safe-r) + 2px); bottom: 36px; border-color: rgba(255,106,43,0.9); background: radial-gradient(circle at 50% 35%, rgba(255,110,50,0.6), rgba(140,40,10,0.6)); font-size: 13px; }
+  #b-fire2 { width: 60px; height: 60px; left: calc(var(--safe-l) + 4px); bottom: 236px; border-color: rgba(255,106,43,0.7); background: radial-gradient(circle at 50% 35%, rgba(255,110,50,0.45), rgba(140,40,10,0.45)); }
+  #b-crouch { width: 64px; height: 64px; right: calc(var(--safe-r) + 108px); bottom: 26px; }
+  #b-run    { width: 64px; height: 64px; right: calc(var(--safe-r) + 102px); bottom: 104px; }
+  #b-jump   { width: 64px; height: 64px; right: calc(var(--safe-r) + 18px); bottom: 142px; }
+  #b-aim    { width: 58px; height: 58px; right: calc(var(--safe-r) + 86px); bottom: 182px; }
+  #b-reload { width: 54px; height: 54px; right: calc(var(--safe-r) + 18px); bottom: 220px; }
+  #b-pause { width: 44px; height: 44px; right: var(--safe-r); top: 12px; border-radius: 12px; }
   #b-pause svg { width: 55%; height: 55%; }
+  #b-cam { width: 56px; height: 56px; right: var(--safe-r); top: 66px; border-radius: 14px; font-size: 10px; }
+  #b-cam svg { width: 50%; height: 50%; }
+  @media (max-height: 500px) and (orientation: landscape) {
+    #dpad { bottom: 18px; }
+    #b-fire2 { bottom: 24px; left: calc(var(--safe-l) + 204px); }
+    #b-reload { right: calc(var(--safe-r) + 186px); bottom: 30px; }
+    #b-aim { right: calc(var(--safe-r) + 182px); bottom: 104px; }
+    #b-jump { bottom: 144px; }
+  }
   .touch-only { display: none; }
   body.is-touch .touch-only { display: revert; }
   body.is-touch .controls.touch-only { display: grid; }
@@ -200,13 +211,20 @@
 <!-- ============ Touch controls (phones and tablets) ============ -->
 <div id="touch" class="hidden">
   <div id="look-zone"></div>
-  <div id="move-zone"></div>
-  <div id="stick"><i></i></div>
+  <div id="dpad">
+    <div class="arr up"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 4l8 11H4z"/></svg></div>
+    <div class="arr down"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 20L4 9h16z"/></svg></div>
+    <div class="arr left"><svg viewBox="0 0 24 24" fill="#fff"><path d="M4 12l11-8v16z"/></svg></div>
+    <div class="arr right"><svg viewBox="0 0 24 24" fill="#fff"><path d="M20 12L9 20V4z"/></svg></div>
+    <div class="hub"></div>
+  </div>
   <div class="tbtn" id="b-fire2"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg></div>
-  <div class="tbtn" id="b-fire"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>FIRE</div>
+  <div class="tbtn" id="b-fire"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>SHOOT</div>
   <div class="tbtn" id="b-aim"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="#fff"/></svg>AIM</div>
   <div class="tbtn" id="b-jump"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14l7-7 7 7"/><path d="M5 20l7-7 7 7" opacity=".5"/></svg>JUMP</div>
   <div class="tbtn" id="b-crouch"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10l7 7 7-7"/><path d="M5 4h14" opacity=".5"/></svg>CROUCH</div>
+  <div class="tbtn" id="b-run"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l6 6-6 6"/><path d="M12 6l6 6-6 6"/></svg>RUN</div>
+  <div class="tbtn" id="b-cam"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg>CAMERA</div>
   <div class="tbtn" id="b-reload"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></div>
   <div class="tbtn" id="b-pause"><svg viewBox="0 0 24 24" fill="#fff"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></div>
 </div>
@@ -225,13 +243,16 @@
       <span><kbd>Left click</kbd></span><span>Shoot (hold for auto)</span>
       <span><kbd>Right click</kbd></span><span>Aim down sights (hold)</span>
       <span><kbd>R</kbd></span><span>Reload</span>
+      <span><kbd>V</kbd></span><span>Switch first / third person</span>
       <span><kbd>Esc</kbd></span><span>Pause</span>
     </div>
     <div class="controls touch-only">
-      <span><kbd>Left thumb</kbd></span><span>Move (push all the way up to sprint)</span>
+      <span><kbd>Arrows</kbd></span><span>Move (slide your thumb for diagonals)</span>
       <span><kbd>Right thumb</kbd></span><span>Drag anywhere to look</span>
-      <span><kbd>FIRE</kbd></span><span>Hold to shoot, drag it to aim while firing</span>
-      <span><kbd>AIM</kbd> <kbd>CROUCH</kbd></span><span>Tap to toggle</span>
+      <span><kbd>SHOOT</kbd></span><span>Hold to shoot, drag it to aim while firing</span>
+      <span><kbd>JUMP</kbd></span><span>Jump</span>
+      <span><kbd>RUN</kbd> <kbd>CROUCH</kbd> <kbd>AIM</kbd></span><span>Tap to turn on or off</span>
+      <span><kbd>CAMERA</kbd></span><span>Switch first / third person</span>
     </div>
     <div class="best" id="best-score"></div>
     <button id="start-btn">DEPLOY</button>
@@ -1548,6 +1569,51 @@ function damagePlayer(amount, fromPos) {
   if (player.health <= 0) gameOver();
 }
 
+/* ---------- Camera view: first person or third person (over the shoulder) ---------- */
+const view = { mode: store.get('ironarena.view', 'fp'), body: null, dist: 3.2 };
+const _camBack = new THREE.Vector3(), _camRight = new THREE.Vector3();
+function ensurePlayerBody() {
+  if (view.body) return view.body;
+  const b = buildSoldier();
+  const friendly = new THREE.MeshStandardMaterial({ color: 0x2f7dff, roughness: 0.6, emissive: 0x06183a });
+  b.group.traverse((o) => { if (o.material === SM.armband) o.material = friendly; });   // blue armband: that's you
+  b.uniform.color.setHex(0x3c4a3a); b.pants.color.setHex(0x2c3330);
+  view.body = { ...b, pos: player.pos, vel: player.vel, facing: 0, crouch: 0, wantCrouch: false, aiming: true, walkPhase: 0, stagger: 0, flashT: 0, flashT2: 0, dead: false };
+  return view.body;
+}
+function applyView() {
+  const tp = view.mode === 'tp';
+  const b = ensurePlayerBody();
+  b.group.visible = tp;
+  gun.visible = !tp;
+  if (IS_TOUCH) setTouchBtn('b-cam', tp);
+}
+function toggleView() {
+  view.mode = view.mode === 'tp' ? 'fp' : 'tp';
+  store.set('ironarena.view', view.mode);
+  applyView();
+  showBanner(view.mode === 'tp' ? '3RD PERSON' : '1ST PERSON');
+}
+function placeThirdPersonCamera(p, dt) {
+  const b = view.body;
+  const head = new THREE.Vector3(p.pos.x, p.pos.y + p.eye + 0.15, p.pos.z);
+  camera.updateMatrixWorld();
+  _camBack.set(0, 0, 1).applyQuaternion(camera.quaternion);      // behind the view direction
+  _camRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+  const want = lerp(3.8, 1.8, p.ads);
+  const tx = head.x + _camBack.x * want + _camRight.x * 0.55;
+  const ty = head.y + _camBack.y * want + 0.4;
+  const tz = head.z + _camBack.z * want + _camRight.z * 0.55;
+  let t = segmentBlockT(head.x, head.y, head.z, tx, Math.max(0.3, ty), tz);   // pull in when a wall is behind you
+  t = t === Infinity ? 1 : Math.max(0.12, t - 0.08);
+  camera.position.set(lerp(head.x, tx, t), Math.max(0.3, lerp(head.y, ty, t)), lerp(head.z, tz, t));
+  // Body follows where you look
+  b.facing = p.yaw + Math.PI;
+  b.wantCrouch = p.crouching;
+  animateSoldier(b, dt);
+  b.group.position.y = p.pos.y;
+}
+
 function updatePlayer(dt) {
   const P = CONFIG.player, p = player;
 
@@ -1566,11 +1632,12 @@ function updatePlayer(dt) {
   if (keys.KeyD) fx += 1;
   let len = Math.hypot(fx, fz);
   if (len > 0) { fx /= len; fz /= len; }
-  if (touch.moving && len === 0) {   // thumb stick: analog, so a small push walks slowly
+  if (touch.moving && len === 0) {   // on-screen arrows
     fx = touch.mx; fz = touch.mz;
     len = Math.hypot(fx, fz);
+    if (len > 0) { fx /= len; fz /= len; len = 1; }
   }
-  const sprinting = (keys.ShiftLeft || keys.ShiftRight || touch.sprint) && len > 0 && fz < 0 && !p.crouching && !mouseRight;
+  const sprinting = (keys.ShiftLeft || keys.ShiftRight || touch.sprint) && len > 0 && fz <= 0 && !p.crouching && !mouseRight;
   let speed = p.crouching ? P.crouchSpeed : sprinting ? P.sprintSpeed : P.walkSpeed;
   if (p.ads > 0.5) speed *= 0.65;
   const sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
@@ -1612,9 +1679,10 @@ function updatePlayer(dt) {
       playerNoise(p.crouching ? 0 : sprinting ? C.hearSprintRange : C.hearWalkRange);
     }
   }
-  const bob = moving ? Math.sin(p.bobTime) * (0.045 * (1 - p.ads * 0.8)) : 0;
-  camera.position.set(p.pos.x, p.pos.y + p.eye + bob, p.pos.z);
+  const bob = moving && view.mode === 'fp' ? Math.sin(p.bobTime) * (0.045 * (1 - p.ads * 0.8)) : 0;
   camera.rotation.set(p.pitch, p.yaw, 0);
+  if (view.mode === 'tp') placeThirdPersonCamera(p, dt);
+  else camera.position.set(p.pos.x, p.pos.y + p.eye + bob, p.pos.z);
 
   return { moving, sprinting, hSpeed };
 }
@@ -1721,6 +1789,7 @@ function updateWeapon(dt, moveInfo) {
   weapon.flashTimer -= dt;
   const flashing = weapon.flashTimer > 0;
   muzzleFlash.visible = flashing;
+  if (view.body) { view.body.flash.visible = flashing && view.mode === 'tp'; }
   camera.getWorldDirection(_fwd);
   muzzleLight.position.copy(camera.position).addScaledVector(_fwd, 0.8);
   muzzleLight.intensity = flashing ? 25 : 0;
@@ -1851,6 +1920,7 @@ const canvas = renderer.domElement;
 document.addEventListener('keydown', (e) => {
   keys[e.code] = true;
   if (e.code === 'KeyR' && state.mode === 'playing') startReload();
+  if (e.code === 'KeyV' && !e.repeat && state.mode === 'playing') toggleView();
   if (e.code === 'KeyH' && !e.repeat) ui.controls.classList.toggle('hidden');
   if (e.code === 'Space') e.preventDefault();
 });
@@ -1873,16 +1943,25 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());   // right 
 const settings = { sens: store.get('ironarena.sens', 1) };
 let aimOnEnemy = false;
 const touch = { moving: false, mx: 0, mz: 0, sprint: false, crouch: false, jump: false };
-const touchUi = $('touch'), stickEl = $('stick'), stickKnob = stickEl.querySelector('i');
-const STICK_R = 52;
-let stickId = null, stickX = 0, stickY = 0;
+const touchUi = $('touch'), dpadEl = $('dpad');
+const dpadArrows = { up: dpadEl.querySelector('.up'), down: dpadEl.querySelector('.down'), left: dpadEl.querySelector('.left'), right: dpadEl.querySelector('.right') };
+let stickId = null;
 const lookers = new Map();   // pointerId -> last x/y, for every finger that is turning the camera
 
 function setTouchBtn(id, on) { $(id).classList.toggle('on', on); }
-function placeStickHome() {
-  const r = $('move-zone').getBoundingClientRect();
-  stickEl.style.left = (r.left + Math.max(110, r.width * 0.32)) + 'px';
-  stickEl.style.top = (r.bottom - 105) + 'px';
+function placeStickHome() {}
+function dpadFrom(x, y) {   // finger position -> 8-way direction; arrows light up
+  const r = dpadEl.getBoundingClientRect();
+  const dx = (x - (r.left + r.width / 2)) / (r.width / 2), dy = (y - (r.top + r.height / 2)) / (r.height / 2);
+  let mx = Math.abs(dx) > 0.3 ? Math.sign(dx) : 0, mz = Math.abs(dy) > 0.3 ? Math.sign(dy) : 0;
+  if (mx && mz && Math.abs(Math.abs(dx) - Math.abs(dy)) > 0.55) { if (Math.abs(dx) > Math.abs(dy)) mz = 0; else mx = 0; }  // mostly straight -> straight
+  touch.mx = mx; touch.mz = mz; touch.moving = !!(mx || mz);
+  dpadArrows.up.classList.toggle('on', mz < 0); dpadArrows.down.classList.toggle('on', mz > 0);
+  dpadArrows.left.classList.toggle('on', mx < 0); dpadArrows.right.classList.toggle('on', mx > 0);
+}
+function dpadRelease() {
+  stickId = null; touch.moving = false; touch.mx = touch.mz = 0;
+  for (const k in dpadArrows) dpadArrows[k].classList.remove('on');
 }
 function lookDrag(id, x, y) {
   const last = lookers.get(id);
@@ -1898,33 +1977,20 @@ function lookDrag(id, x, y) {
 function startLook(e) { lookers.set(e.pointerId, { x: e.clientX, y: e.clientY }); }
 function endPointer(e) {
   lookers.delete(e.pointerId);
-  if (e.pointerId === stickId) {
-    stickId = null; touch.moving = false; touch.sprint = false; touch.mx = touch.mz = 0;
-    stickKnob.style.transform = ''; stickEl.classList.remove('active', 'sprint');
-    placeStickHome();
-  }
+  if (e.pointerId === stickId) dpadRelease();
 }
-$('move-zone').addEventListener('pointerdown', (e) => {
-  e.preventDefault();
+dpadEl.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); e.stopPropagation();
   if (stickId !== null) return;
-  stickId = e.pointerId; stickX = e.clientX; stickY = e.clientY;
-  stickEl.style.left = stickX + 'px'; stickEl.style.top = stickY + 'px';
-  stickEl.classList.add('active');
-  touch.moving = true;
+  stickId = e.pointerId;
+  try { dpadEl.setPointerCapture(e.pointerId); } catch (_) {}
+  dpadFrom(e.clientX, e.clientY);
 });
 $('look-zone').addEventListener('pointerdown', (e) => { e.preventDefault(); startLook(e); });
 window.addEventListener('pointermove', (e) => {
   if (e.pointerType === 'mouse') return;
   if (e.pointerId === stickId) {
-    let dx = e.clientX - stickX, dy = e.clientY - stickY;
-    const d = Math.hypot(dx, dy);
-    if (d > STICK_R) { dx *= STICK_R / d; dy *= STICK_R / d; }
-    stickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-    touch.mx = dx / STICK_R; touch.mz = dy / STICK_R;
-    const mag = Math.hypot(touch.mx, touch.mz);
-    if (mag < 0.12) { touch.mx = touch.mz = 0; }
-    touch.sprint = mag > 0.92 && touch.mz < -0.75;   // push all the way forward to sprint
-    stickEl.classList.toggle('sprint', touch.sprint);
+    dpadFrom(e.clientX, e.clientY);
   } else lookDrag(e.pointerId, e.clientX, e.clientY);
 }, { passive: true });
 window.addEventListener('pointerup', endPointer);
@@ -1948,9 +2014,11 @@ for (const id of ['b-fire', 'b-fire2']) {
     () => { mouseDown = [...document.querySelectorAll('#b-fire.pressed, #b-fire2.pressed')].length > 0; });
 }
 holdButton('b-aim', () => { mouseRight = !mouseRight; setTouchBtn('b-aim', mouseRight); });
-holdButton('b-crouch', () => { touch.crouch = !touch.crouch; setTouchBtn('b-crouch', touch.crouch); });
+holdButton('b-crouch', () => { touch.crouch = !touch.crouch; setTouchBtn('b-crouch', touch.crouch); if (touch.crouch) { touch.sprint = false; setTouchBtn('b-run', false); } });
 holdButton('b-jump', () => { touch.jump = true; });
 holdButton('b-reload', () => startReload());
+holdButton('b-run', () => { touch.sprint = !touch.sprint; if (touch.sprint && touch.crouch) { touch.crouch = false; setTouchBtn('b-crouch', false); } setTouchBtn('b-run', touch.sprint); });
+holdButton('b-cam', () => toggleView());
 $('b-pause').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); pauseGame(); });
 
 document.addEventListener('mousemove', (e) => {
@@ -1993,19 +2061,21 @@ function resetGame() {
 
 function resetTouch() {
   mouseDown = mouseRight = false;
-  touch.crouch = touch.jump = false;
-  for (const id of ['b-aim', 'b-crouch']) setTouchBtn(id, false);
+  touch.crouch = touch.jump = touch.sprint = false;
+  dpadRelease();
+  for (const id of ['b-aim', 'b-crouch', 'b-run']) setTouchBtn(id, false);
   document.querySelectorAll('.tbtn.pressed').forEach((el) => el.classList.remove('pressed'));
 }
 
 function beginPlaying() {
   Sound.init();
+  applyView();
   state.mode = 'playing';
   ui.start.classList.add('hidden');
   ui.over.classList.add('hidden');
   ui.pause.classList.add('hidden');
   ui.hud.classList.remove('hidden');
-  if (IS_TOUCH) { touchUi.classList.remove('hidden'); placeStickHome(); }
+  if (IS_TOUCH) touchUi.classList.remove('hidden');
   clock.getDelta();             // don't count menu time as a frame
   if (!IS_TOUCH) lockPointer();
 }
@@ -2106,8 +2176,7 @@ function frame() {
   sky.position.copy(camera.position);
   renderer.clear();
   renderer.render(scene, camera);
-  renderer.clearDepth();
-  renderer.render(gunScene, gunCamera);
+  if (view.mode !== 'tp') { renderer.clearDepth(); renderer.render(gunScene, gunCamera); }
 }
 frame();
 
