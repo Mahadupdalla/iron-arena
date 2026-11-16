@@ -124,7 +124,6 @@
   .tbtn svg { width: 44%; height: 44%; margin-bottom: 1px; }
   .tbtn.on, .tbtn.pressed { border-color: #ffb38a; background: radial-gradient(circle at 50% 35%, rgba(255,120,60,0.9), rgba(200,60,20,0.8)); }
   #b-fire { width: 96px; height: 96px; right: calc(var(--safe-r) + 2px); bottom: 36px; border-color: rgba(255,106,43,0.9); background: radial-gradient(circle at 50% 35%, rgba(255,110,50,0.6), rgba(140,40,10,0.6)); font-size: 13px; }
-  #b-fire2 { width: 60px; height: 60px; left: calc(var(--safe-l) + 4px); bottom: 236px; border-color: rgba(255,106,43,0.7); background: radial-gradient(circle at 50% 35%, rgba(255,110,50,0.45), rgba(140,40,10,0.45)); }
   #b-crouch { width: 64px; height: 64px; right: calc(var(--safe-r) + 108px); bottom: 26px; }
   #b-run    { width: 64px; height: 64px; right: calc(var(--safe-r) + 102px); bottom: 104px; }
   #b-jump   { width: 64px; height: 64px; right: calc(var(--safe-r) + 18px); bottom: 142px; }
@@ -136,7 +135,6 @@
   #b-cam svg { width: 50%; height: 50%; }
   @media (max-height: 500px) and (orientation: landscape) {
     #dpad { bottom: 18px; }
-    #b-fire2 { bottom: 24px; left: calc(var(--safe-l) + 204px); }
     #b-reload { right: calc(var(--safe-r) + 186px); bottom: 30px; }
     #b-aim { right: calc(var(--safe-r) + 182px); bottom: 104px; }
     #b-jump { bottom: 144px; }
@@ -218,7 +216,6 @@
     <div class="arr right"><svg viewBox="0 0 24 24" fill="#fff"><path d="M20 12L9 20V4z"/></svg></div>
     <div class="hub"></div>
   </div>
-  <div class="tbtn" id="b-fire2"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg></div>
   <div class="tbtn" id="b-fire"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>SHOOT</div>
   <div class="tbtn" id="b-aim"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="#fff"/></svg>AIM</div>
   <div class="tbtn" id="b-jump"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14l7-7 7 7"/><path d="M5 20l7-7 7 7" opacity=".5"/></svg>JUMP</div>
@@ -247,7 +244,8 @@
       <span><kbd>Esc</kbd></span><span>Pause</span>
     </div>
     <div class="controls touch-only">
-      <span><kbd>Arrows</kbd></span><span>Move (slide your thumb for diagonals)</span>
+      <span><kbd>&#9650; &#9660;</kbd></span><span>Walk forward / back</span>
+      <span><kbd>&#9664; &#9654;</kbd></span><span>Turn left / right</span>
       <span><kbd>Right thumb</kbd></span><span>Drag anywhere to look</span>
       <span><kbd>SHOOT</kbd></span><span>Hold to shoot, drag it to aim while firing</span>
       <span><kbd>JUMP</kbd></span><span>Jump</span>
@@ -375,7 +373,7 @@ if (IS_TOUCH) {
   document.body.classList.add('is-touch');
   CONFIG.visual.maxPixelRatio = 1.35;
   CONFIG.soldier.aimError *= 1.2;          // aiming with a thumb is harder, so opponents are a touch less deadly
-  CONFIG.player.touchLookSpeed = 0.0052;   // radians per pixel of thumb drag
+  CONFIG.player.touchLookSpeed = 0.0078;   // radians per pixel of thumb drag
 }
 const store = {   // small wrapper so a blocked localStorage never breaks the game
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (_) { return d; } },
@@ -977,12 +975,46 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 const soldiers = [];   // alive and dying soldiers
 
-function buildSoldier() {
-  const [shirtCol, pantsCol] = pick(UNIFORMS);
-  const uniform = new THREE.MeshStandardMaterial({ color: shirtCol, roughness: 0.85 });
-  const pants = new THREE.MeshStandardMaterial({ color: pantsCol, roughness: 0.9 });
-  const skin = new THREE.MeshStandardMaterial({ color: pick(SKIN_TONES), roughness: 0.65 });
-  const vestMat = pick(VEST_MATS), helmetMat = pick(HELMET_MATS);
+const CAMO = {   // enemy camo patterns: dark urban, red desert, black ops; the player's is woodland green
+  urban:  [0x3a3d42, 0x24262a, 0x55585e, 0x16171a],
+  desert: [0x8a5a3c, 0x6b3f2a, 0xa9784e, 0x4a2a1c],
+  black:  [0x1e1f22, 0x2c2d31, 0x121315, 0x3a2224],
+  player: [0x4f6340, 0x3a4a30, 0x6f7f52, 0x2a3324],
+};
+const camoTex = {};
+function getCamo(name) {
+  if (camoTex[name]) return camoTex[name];
+  const cols = CAMO[name];
+  camoTex[name] = canvasTexture(128, (g, n) => {
+    g.fillStyle = '#' + cols[0].toString(16).padStart(6, '0'); g.fillRect(0, 0, n, n);
+    for (let k = 1; k < cols.length; k++) {
+      g.fillStyle = '#' + cols[k].toString(16).padStart(6, '0');
+      for (let i = 0; i < 14; i++) {
+        const x = Math.random() * n, y = Math.random() * n, r = 6 + Math.random() * 14;
+        for (const [ox, oy] of [[0, 0], [n, 0], [-n, 0], [0, n], [0, -n]]) {   // wrap so the pattern tiles
+          g.beginPath(); g.ellipse(x + ox, y + oy, r * 1.4, r, Math.random() * 3, 0, Math.PI * 2); g.fill();
+        }
+      }
+    }
+    grain(g, n, 18);
+  });
+  return camoTex[name];
+}
+const MASK_MAT = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.95 });
+const FRIEND_BAND = new THREE.MeshStandardMaterial({ color: 0x2f7dff, roughness: 0.6, emissive: 0x06183a });
+SG.mask = new THREE.SphereGeometry(0.118, 18, 14);
+SG.eyeSlit = new THREE.BoxGeometry(0.13, 0.032, 0.03);
+SG.glove = new THREE.SphereGeometry(0.05, 10, 8);
+SG.patch = new THREE.BoxGeometry(0.09, 0.07, 0.01);
+
+function buildSoldier(isPlayer = false) {
+  const camoName = isPlayer ? 'player' : pick(['urban', 'desert', 'black']);
+  const uniform = new THREE.MeshStandardMaterial({ map: getCamo(camoName), roughness: 0.9 });
+  const pants = new THREE.MeshStandardMaterial({ map: getCamo(camoName), color: 0xcccccc, roughness: 0.92 });
+  const skin = new THREE.MeshStandardMaterial({ color: isPlayer ? 0xc68642 : pick(SKIN_TONES), roughness: 0.65 });
+  const vestMat = isPlayer ? VEST_MATS[3] : pick(VEST_MATS.slice(0, 3)), helmetMat = isPlayer ? HELMET_MATS[3] : pick(HELMET_MATS.slice(0, 3));
+  const masked = !isPlayer && Math.random() < 0.65;   // most enemies wear a black balaclava
+  const bandMat = isPlayer ? FRIEND_BAND : SM.armband;
   const hitMeshes = [];
   const mesh = (geo, mat, part, parent, x, y, z, shadow = true) => {
     const m = new THREE.Mesh(geo, mat);
@@ -1025,6 +1057,12 @@ function buildSoldier() {
     mesh(SG.brow, SM.brow, null, head, side * 0.04, 0.025, 0.1, false);
   }
   mesh(SG.mouth, SM.brow, null, head, 0, -0.07, 0.1, false);
+  if (masked) {
+    mesh(SG.mask, MASK_MAT, 'head', head, 0, -0.01, 0.005).scale.set(0.98, 1.12, 1.04);
+    mesh(SG.eyeSlit, skin, null, head, 0, 0.0, 0.1, false);
+    for (const side of [-1, 1]) mesh(SG.eye, SM.eye, null, head, side * 0.038, 0.0, 0.117, false);
+  }
+  mesh(SG.patch, bandMat, null, torso, -0.12, 0.45, 0.165, false);   // shoulder patch on the vest
   mesh(SG.helmet, helmetMat, 'head', head, 0, 0.03, -0.005).scale.set(1, 0.92, 1.06);
   if (Math.random() < 0.45) mesh(SG.goggles, SM.lens, null, head, 0, 0.075, 0.115, false);   // goggles pushed up on the helmet
 
@@ -1032,10 +1070,10 @@ function buildSoldier() {
   for (const side of [-1, 1]) {
     const arm = new THREE.Group(); arm.position.set(side * 0.25, 0.5, 0); torso.add(arm);
     mesh(SG.upperArm, uniform, 'limb', arm, 0, -0.15, 0);
-    mesh(SG.armband, SM.armband, null, arm, 0, -0.07, 0, false);   // red armband: marks them as the enemy squad
+    mesh(SG.armband, bandMat, null, arm, 0, -0.07, 0, false);   // red armband = enemy, blue = you
     const elbow = new THREE.Group(); elbow.position.y = -0.29; arm.add(elbow);
     mesh(SG.forearm, uniform, 'limb', elbow, 0, -0.13, 0);
-    mesh(SG.hand, skin, 'limb', elbow, 0, -0.28, 0).scale.set(0.85, 1.1, 0.75);
+    mesh(SG.hand, masked ? SM.boots : skin, 'limb', elbow, 0, -0.28, 0).scale.set(0.85, 1.1, 0.75);   // masked soldiers wear gloves
     arms.push(arm); elbows.push(elbow);
   }
   const rifle = new THREE.Group(); rifle.position.set(0.1, 0.36, 0.32); torso.add(rifle);
@@ -1088,7 +1126,7 @@ function spawnSoldier() {
 
 function removeSoldier(s) {
   scene.remove(s.group);
-  s.uniform.dispose(); s.pants.dispose(); s.skin.dispose();
+  s.uniform.dispose(); s.pants.dispose(); s.skin.dispose();   // camo textures are shared, so they stay
   soldiers.splice(soldiers.indexOf(s), 1);
 }
 
@@ -1570,14 +1608,11 @@ function damagePlayer(amount, fromPos) {
 }
 
 /* ---------- Camera view: first person or third person (over the shoulder) ---------- */
-const view = { mode: store.get('ironarena.view', 'fp'), body: null, dist: 3.2 };
+const view = { mode: store.get('ironarena.view2', 'tp'), body: null, dist: 3.2 };
 const _camBack = new THREE.Vector3(), _camRight = new THREE.Vector3();
 function ensurePlayerBody() {
   if (view.body) return view.body;
-  const b = buildSoldier();
-  const friendly = new THREE.MeshStandardMaterial({ color: 0x2f7dff, roughness: 0.6, emissive: 0x06183a });
-  b.group.traverse((o) => { if (o.material === SM.armband) o.material = friendly; });   // blue armband: that's you
-  b.uniform.color.setHex(0x3c4a3a); b.pants.color.setHex(0x2c3330);
+  const b = buildSoldier(true);
   view.body = { ...b, pos: player.pos, vel: player.vel, facing: 0, crouch: 0, wantCrouch: false, aiming: true, walkPhase: 0, stagger: 0, flashT: 0, flashT2: 0, dead: false };
   return view.body;
 }
@@ -1590,7 +1625,7 @@ function applyView() {
 }
 function toggleView() {
   view.mode = view.mode === 'tp' ? 'fp' : 'tp';
-  store.set('ironarena.view', view.mode);
+  store.set('ironarena.view2', view.mode);
   applyView();
   showBanner(view.mode === 'tp' ? '3RD PERSON' : '1ST PERSON');
 }
@@ -1632,10 +1667,10 @@ function updatePlayer(dt) {
   if (keys.KeyD) fx += 1;
   let len = Math.hypot(fx, fz);
   if (len > 0) { fx /= len; fz /= len; }
-  if (touch.moving && len === 0) {   // on-screen arrows
-    fx = touch.mx; fz = touch.mz;
-    len = Math.hypot(fx, fz);
-    if (len > 0) { fx /= len; fz /= len; len = 1; }
+  if (touch.moving && len === 0) {   // on-screen arrows: up/down walk, left/right turn you around
+    p.yaw -= touch.mx * 2.6 * dt;
+    fz = touch.mz; fx = 0;
+    len = Math.abs(fz);
   }
   const sprinting = (keys.ShiftLeft || keys.ShiftRight || touch.sprint) && len > 0 && fz <= 0 && !p.crouching && !mouseRight;
   let speed = p.crouching ? P.crouchSpeed : sprinting ? P.sprintSpeed : P.walkSpeed;
@@ -1758,6 +1793,7 @@ const _fwd = new THREE.Vector3();
 function updateWeapon(dt, moveInfo) {
   const W = CONFIG.weapon;
   weapon.cooldown -= dt;
+  if (IS_TOUCH && mouseDown && !document.querySelector('#b-fire.pressed')) mouseDown = false;   // only shoot while SHOOT is held
   if (mouseDown) shoot();
 
   if (weapon.reloading) {
@@ -1930,6 +1966,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pause
 
 document.addEventListener('mousedown', (e) => {
   if (state.mode !== 'playing') return;
+  if (IS_TOUCH && document.pointerLockElement !== canvas) return;   // phones send fake mouse clicks for taps: never shoot from those
   if (e.button === 0) { mouseDown = true; shoot(); }
   if (e.button === 2) mouseRight = true;
 });
@@ -1970,7 +2007,7 @@ function lookDrag(id, x, y) {
   last.x = x; last.y = y;
   if (state.mode !== 'playing') return;
   let sens = CONFIG.player.touchLookSpeed * settings.sens * (camera.fov / CONFIG.weapon.hipFov);
-  if (aimOnEnemy) sens *= 0.6;   // gentle aim assist: the view slows while the crosshair is on an enemy
+  if (aimOnEnemy) sens *= 0.8;   // gentle aim assist: the view slows while the crosshair is on an enemy
   player.yaw -= dx * sens;
   player.pitch = clamp(player.pitch - dy * sens, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
 }
@@ -2009,9 +2046,9 @@ function holdButton(id, down, up) {
   el.addEventListener('lostpointercapture', release);
 }
 // FIRE also turns the camera while you hold it, like most mobile shooters
-for (const id of ['b-fire', 'b-fire2']) {
+for (const id of ['b-fire']) {
   holdButton(id, (e) => { mouseDown = true; shoot(); startLook(e); $(id).setPointerCapture(e.pointerId); },
-    () => { mouseDown = [...document.querySelectorAll('#b-fire.pressed, #b-fire2.pressed')].length > 0; });
+    () => { mouseDown = !!document.querySelector('#b-fire.pressed'); });
 }
 holdButton('b-aim', () => { mouseRight = !mouseRight; setTouchBtn('b-aim', mouseRight); });
 holdButton('b-crouch', () => { touch.crouch = !touch.crouch; setTouchBtn('b-crouch', touch.crouch); if (touch.crouch) { touch.sprint = false; setTouchBtn('b-run', false); } });
@@ -2187,7 +2224,7 @@ showMenu();
 });
 
 // Handy for debugging in the browser console, e.g. __game.CONFIG.soldier.aimError = 0.1
-window.__game = { CONFIG, state, player, soldiers, weapon, spawnSoldier, damagePlayer, damageSoldier, soldierFire, canSee, findCover };
+window.__game = { CONFIG, state, player, camera, view, soldiers, weapon, spawnSoldier, damagePlayer, damageSoldier, soldierFire, canSee, findCover };
 </script>
 </body>
 </html>
