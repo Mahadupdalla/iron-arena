@@ -113,34 +113,47 @@
   /* ---------- Touch controls ---------- */
   #touch { position: fixed; inset: 0; z-index: 5; }
   #look-zone { position: absolute; inset: 0; }
-  #dpad { position: absolute; left: calc(var(--safe-l) + 4px); bottom: 28px; width: 186px; height: 186px; touch-action: none; }
-  #dpad .arr { position: absolute; width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: rgba(20,28,44,0.72); border: 2px solid rgba(255,255,255,0.35); box-shadow: 0 6px 18px rgba(0,0,0,0.35); pointer-events: none; }
+  #touch { --bs: 1; }
+  #dpad { position: absolute; left: calc(var(--safe-l) + 2px); bottom: 22px; touch-action: none; }
+  #dpad .arr { position: absolute; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: rgba(20,28,44,0.72); border: 2px solid rgba(255,255,255,0.35); box-shadow: 0 6px 18px rgba(0,0,0,0.35); pointer-events: none; }
   #dpad .arr svg { width: 60%; height: 60%; }
   #dpad .arr.on { background: rgba(255,106,43,0.85); border-color: #ffb38a; }
-  #dpad .up { left: 61px; top: 0; } #dpad .down { left: 61px; bottom: 0; }
-  #dpad .left { left: 0; top: 61px; } #dpad .right { right: 0; top: 61px; }
-  #dpad .hub { position: absolute; left: 73px; top: 73px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.2); pointer-events: none; }
-  .tbtn { position: absolute; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; background: radial-gradient(circle at 50% 35%, rgba(40,52,78,0.8), rgba(10,14,22,0.75)); border: 2px solid rgba(255,255,255,0.35); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; box-shadow: 0 6px 18px rgba(0,0,0,0.35); touch-action: none; }
+  #dpad .hub { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.18); pointer-events: none; }
+  .tbtn { position: absolute; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; background: radial-gradient(circle at 50% 35%, rgba(40,52,78,0.8), rgba(10,14,22,0.75)); border: 2px solid rgba(255,255,255,0.35); color: #fff; font-size: calc(var(--bs) * 11px); font-weight: 700; letter-spacing: 0.1em; box-shadow: 0 6px 18px rgba(0,0,0,0.35); touch-action: none; }
   .tbtn svg { width: 44%; height: 44%; margin-bottom: 1px; }
   .tbtn.on, .tbtn.pressed { border-color: #ffb38a; background: radial-gradient(circle at 50% 35%, rgba(255,120,60,0.9), rgba(200,60,20,0.8)); }
-  #b-fire { width: 96px; height: 96px; right: calc(var(--safe-r) + 2px); bottom: 36px; border-color: rgba(255,106,43,0.9); background: radial-gradient(circle at 50% 35%, rgba(255,110,50,0.6), rgba(140,40,10,0.6)); font-size: 13px; }
-  #b-crouch { width: 64px; height: 64px; right: calc(var(--safe-r) + 108px); bottom: 26px; }
-  #b-run    { width: 64px; height: 64px; right: calc(var(--safe-r) + 102px); bottom: 104px; }
-  #b-jump   { width: 64px; height: 64px; right: calc(var(--safe-r) + 18px); bottom: 142px; }
-  #b-aim    { width: 58px; height: 58px; right: calc(var(--safe-r) + 86px); bottom: 182px; }
-  #b-reload { width: 54px; height: 54px; right: calc(var(--safe-r) + 18px); bottom: 220px; }
+  #b-fire   { width: calc(var(--bs) * 92px); height: calc(var(--bs) * 92px); right: calc(var(--safe-r) + calc(var(--bs) * 0px)); bottom: calc(var(--bs) * 30px); border-color: rgba(255,106,43,0.9); background: radial-gradient(circle at 50% 35%, rgba(255,110,50,0.6), rgba(140,40,10,0.6)); font-size: calc(var(--bs) * 13px); }
+  #b-crouch { width: calc(var(--bs) * 62px); height: calc(var(--bs) * 62px); right: calc(var(--safe-r) + calc(var(--bs) * 100px)); bottom: calc(var(--bs) * 20px); }
+  #b-run    { width: calc(var(--bs) * 62px); height: calc(var(--bs) * 62px); right: calc(var(--safe-r) + calc(var(--bs) * 96px)); bottom: calc(var(--bs) * 96px); }
+  #b-jump   { width: calc(var(--bs) * 62px); height: calc(var(--bs) * 62px); right: calc(var(--safe-r) + calc(var(--bs) * 10px)); bottom: calc(var(--bs) * 132px); }
+  #b-aim    { width: calc(var(--bs) * 56px); height: calc(var(--bs) * 56px); right: calc(var(--safe-r) + calc(var(--bs) * 82px)); bottom: calc(var(--bs) * 170px); }
+  #b-reload { width: calc(var(--bs) * 52px); height: calc(var(--bs) * 52px); right: calc(var(--safe-r) + calc(var(--bs) * 10px)); bottom: calc(var(--bs) * 206px); }
   #b-pause { width: 44px; height: 44px; right: var(--safe-r); top: 12px; border-radius: 12px; }
   #b-pause svg { width: 55%; height: 55%; }
   #b-cam { width: 56px; height: 56px; right: var(--safe-r); top: 66px; border-radius: 14px; font-size: 10px; }
   #b-cam svg { width: 50%; height: 50%; }
+  #b-gear { width: 56px; height: 56px; right: var(--safe-r); top: 128px; border-radius: 14px; font-size: 10px; }
+  #b-gear svg { width: 50%; height: 50%; }
   @media (max-height: 500px) and (orientation: landscape) {
-    #dpad { bottom: 18px; }
-    #b-reload { right: calc(var(--safe-r) + 186px); bottom: 30px; }
-    #b-aim { right: calc(var(--safe-r) + 182px); bottom: 104px; }
-    #b-jump { bottom: 144px; }
+    #b-cam { top: 92px; }
+    #b-gear { top: 92px; right: calc(var(--safe-r) + 62px); }
+    #b-reload { right: calc(var(--safe-r) + calc(var(--bs) * 176px)); bottom: calc(var(--bs) * 24px); }
+    #b-aim { right: calc(var(--safe-r) + calc(var(--bs) * 172px)); bottom: calc(var(--bs) * 100px); }
   }
+  /* ---------- Settings screen ---------- */
+  #settings-screen .card { max-width: 560px; text-align: left; padding: 18px 20px; }
+  #settings-screen h1 { text-align: center; font-size: 30px; }
+  .srow { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .srow label { flex: 0 0 38%; font-size: 15px; font-weight: 700; letter-spacing: 0.08em; color: #dfe6f3; }
+  .srow input[type=range] { flex: 1; height: 34px; accent-color: var(--accent); }
+  .srow output { flex: 0 0 46px; text-align: right; font-weight: 700; color: var(--accent-2); }
+  .seg { flex: 1; display: flex; gap: 6px; }
+  .seg button { flex: 1; font-size: 13px; letter-spacing: 0.06em; padding: 10px 4px; border-radius: 10px; background: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18); }
+  .seg button.sel { background: linear-gradient(180deg, #ff7a3d, #e5481a); box-shadow: none; }
+  #settings-screen .btn-row { margin-top: 14px; }
   .touch-only { display: none; }
   body.is-touch .touch-only { display: revert; }
+  body.is-touch .srow.touch-only { display: flex; }
   body.is-touch .controls.touch-only { display: grid; }
   body.is-touch .desk-only { display: none !important; }
   /* On phones, the HUD moves out of the way of the thumbs */
@@ -221,6 +234,7 @@
   <div class="tbtn" id="b-jump"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14l7-7 7 7"/><path d="M5 20l7-7 7 7" opacity=".5"/></svg>JUMP</div>
   <div class="tbtn" id="b-crouch"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10l7 7 7-7"/><path d="M5 4h14" opacity=".5"/></svg>CROUCH</div>
   <div class="tbtn" id="b-run"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6l6 6-6 6"/><path d="M12 6l6 6-6 6"/></svg>RUN</div>
+  <div class="tbtn" id="b-gear"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>SETTINGS</div>
   <div class="tbtn" id="b-cam"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg>CAMERA</div>
   <div class="tbtn" id="b-reload"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></div>
   <div class="tbtn" id="b-pause"><svg viewBox="0 0 24 24" fill="#fff"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></div>
@@ -253,7 +267,7 @@
       <span><kbd>CAMERA</kbd></span><span>Switch first / third person</span>
     </div>
     <div class="best" id="best-score"></div>
-    <button id="start-btn">DEPLOY</button>
+    <div class="btn-row"><button id="start-btn">DEPLOY</button><button id="settings-btn" class="ghost">SETTINGS</button></div>
   </div>
 </div>
 
@@ -262,8 +276,25 @@
   <div class="card">
     <h1>PAUSED</h1>
     <p>Take a breath, soldier.</p>
-    <div class="setting">LOOK SPEED <input id="sens" type="range" min="0.4" max="2.2" step="0.05" value="1"></div>
-    <div class="btn-row"><button id="resume-btn">RESUME</button><button id="quit-btn" class="ghost">MAIN MENU</button></div>
+    <div class="btn-row"><button id="resume-btn">RESUME</button><button id="pause-settings-btn" class="ghost">SETTINGS</button><button id="quit-btn" class="ghost">MAIN MENU</button></div>
+  </div>
+</div>
+
+<!-- ============ Settings screen ============ -->
+<div id="settings-screen" class="screen hidden">
+  <div class="card">
+    <h1>SETTINGS</h1>
+    <div class="srow touch-only"><label>BUTTON SIZE</label><input id="s-bs" type="range" min="0.75" max="1.4" step="0.05"><output id="o-bs"></output></div>
+    <div class="srow touch-only"><label>ARROW SPACING</label><input id="s-gap" type="range" min="0" max="44" step="2"><output id="o-gap"></output></div>
+    <div class="srow touch-only"><label>ARROW SIZE</label><input id="s-as" type="range" min="44" max="84" step="2"><output id="o-as"></output></div>
+    <div class="srow touch-only"><label>LEFT / RIGHT ARROWS</label><div class="seg" id="g-arrows"><button data-v="turn">TURN</button><button data-v="strafe">STEP SIDEWAYS</button></div></div>
+    <div class="srow touch-only"><label>TURN SPEED</label><input id="s-turn" type="range" min="1" max="5" step="0.1"><output id="o-turn"></output></div>
+    <div class="srow"><label>LOOK SPEED</label><input id="s-sens" type="range" min="0.4" max="2.4" step="0.05"><output id="o-sens"></output></div>
+    <div class="srow"><label>CAMERA</label><div class="seg" id="g-view"><button data-v="fp">1ST PERSON</button><button data-v="tp">3RD PERSON</button></div></div>
+    <div class="srow"><label>SOUND</label><input id="s-vol" type="range" min="0" max="1" step="0.05"><output id="o-vol"></output></div>
+    <div class="srow"><label>GRAPHICS</label><div class="seg" id="g-gfx"><button data-v="low">LOW</button><button data-v="med">MEDIUM</button><button data-v="high">HIGH</button></div></div>
+    <div class="srow"><label>DIFFICULTY</label><div class="seg" id="g-diff"><button data-v="easy">EASY</button><button data-v="normal">NORMAL</button><button data-v="hard">HARD</button></div></div>
+    <div class="btn-row"><button id="settings-done">DONE</button><button id="settings-reset" class="ghost">RESET</button></div>
   </div>
 </div>
 
@@ -714,7 +745,7 @@ const Sound = {
     if (!AC) return;
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.45;
+    this.master.gain.value = (window.__vol ?? 0.45);
     this.master.connect(this.ctx.destination);
     const len = this.ctx.sampleRate;          // one second of white noise, reused
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -1108,7 +1139,7 @@ function spawnSoldier() {
     pos: pos.clone(), vel: new THREE.Vector3(), facing: rand(0, Math.PI * 2),
     hp: C.health + C.healthPerWave * (w - 1), maxHp: C.health + C.healthPerWave * (w - 1),
     runSpeed: C.runSpeed * speedMult * rand(0.9, 1.1), walkSpeed: C.walkSpeed * speedMult,
-    aimError: C.aimError / (1 + C.accuracyPerWave * (w - 1)),
+    aimError: C.aimError * DIFF[settings.diff].aim / (1 + C.accuracyPerWave * (w - 1)),
     damage: C.damage + C.damagePerWave * (w - 1),
     role: Math.random() < C.flankerChance ? 'flanker' : 'rifleman',
     state: 'patrol', stateT: 0, target: null, running: false,
@@ -1600,6 +1631,7 @@ const player = {
 };
 
 function damagePlayer(amount, fromPos) {
+  amount *= DIFF[settings.diff].dmg;
   player.health = Math.max(0, player.health - amount);
   state.damageFlash = 1;
   Sound.hurt();
@@ -1667,10 +1699,12 @@ function updatePlayer(dt) {
   if (keys.KeyD) fx += 1;
   let len = Math.hypot(fx, fz);
   if (len > 0) { fx /= len; fz /= len; }
-  if (touch.moving && len === 0) {   // on-screen arrows: up/down walk, left/right turn you around
-    p.yaw -= touch.mx * 2.6 * dt;
-    fz = touch.mz; fx = 0;
-    len = Math.abs(fz);
+  if (touch.moving && len === 0) {   // on-screen arrows: up/down walk, left/right turn (or step sideways, in Settings)
+    if (settings.arrows === 'turn') { p.yaw -= touch.mx * settings.turn * dt; fx = 0; }
+    else fx = touch.mx;
+    fz = touch.mz;
+    len = Math.hypot(fx, fz);
+    if (len > 0) { fx /= len; fz /= len; len = 1; }
   }
   const sprinting = (keys.ShiftLeft || keys.ShiftRight || touch.sprint) && len > 0 && fz <= 0 && !p.crouching && !mouseRight;
   let speed = p.crouching ? P.crouchSpeed : sprinting ? P.sprintSpeed : P.walkSpeed;
@@ -1977,7 +2011,32 @@ document.addEventListener('mouseup', (e) => {
 document.addEventListener('contextmenu', (e) => e.preventDefault());   // right click = aim, not a menu
 
 /* ---------- Touch controls: left thumb stick, drag-to-look, on-screen buttons ---------- */
-const settings = { sens: store.get('ironarena.sens', 1) };
+const DEFAULTS = { sens: 1, bs: 1, gap: 18, as: 60, arrows: 'turn', turn: 2.6, vol: 0.45, gfx: 'high', diff: 'normal' };
+const settings = Object.assign({}, DEFAULTS, store.get('ironarena.settings', {}));
+if (!store.get('ironarena.settings', null)) settings.sens = store.get('ironarena.sens', 1);
+const DIFF = { easy: { dmg: 0.5, aim: 1.5 }, normal: { dmg: 1, aim: 1 }, hard: { dmg: 1.5, aim: 0.7 } };
+function saveSettings() { store.set('ironarena.settings', settings); }
+function layoutDpad() {
+  const A = settings.as * settings.bs, G = settings.gap, T = 3 * A + 2 * G;
+  const d = $('dpad'); d.style.width = d.style.height = T + 'px';
+  const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.width = el.style.height = A + 'px'; };
+  place(d.querySelector('.up'), A + G, 0); place(d.querySelector('.down'), A + G, 2 * (A + G));
+  place(d.querySelector('.left'), 0, A + G); place(d.querySelector('.right'), 2 * (A + G), A + G);
+  const hub = d.querySelector('.hub'), h = A * 0.6; hub.style.width = hub.style.height = h + 'px'; hub.style.left = hub.style.top = (T - h) / 2 + 'px';
+}
+function applyGraphics() {
+  const pr = { low: 0.75, med: 1, high: CONFIG.visual.maxPixelRatio }[settings.gfx];
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, pr));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  const sh = settings.gfx !== 'low' && CONFIG.visual.shadows;
+  if (renderer.shadowMap.enabled !== sh) { renderer.shadowMap.enabled = sh; scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => { m.needsUpdate = true; }); }); }
+}
+function applySettings() {
+  $('touch').style.setProperty('--bs', settings.bs);
+  layoutDpad();
+  if (Sound.master) Sound.master.gain.value = settings.vol;
+  applyGraphics();
+}
 let aimOnEnemy = false;
 const touch = { moving: false, mx: 0, mz: 0, sprint: false, crouch: false, jump: false };
 const touchUi = $('touch'), dpadEl = $('dpad');
@@ -2168,8 +2227,46 @@ $('restart-btn').addEventListener('click', () => { resetGame(); beginPlaying(); 
 $('resume-btn').addEventListener('click', () => beginPlaying());
 $('quit-btn').addEventListener('click', () => { gameOverQuiet(); showMenu(); });
 $('menu-btn').addEventListener('click', () => showMenu());
-$('sens').value = settings.sens;
-$('sens').addEventListener('input', (e) => { settings.sens = +e.target.value; store.set('ironarena.sens', settings.sens); });
+/* ---------- Settings screen ---------- */
+let settingsFrom = 'menu';
+const SLIDERS = { bs: (v) => Math.round(v * 100) + '%', gap: (v) => v + 'px', as: (v) => v + 'px', turn: (v) => (+v).toFixed(1), sens: (v) => Math.round(v * 100) + '%', vol: (v) => Math.round(v * 100) + '%' };
+const GROUPS = { arrows: 'g-arrows', view: 'g-view', gfx: 'g-gfx', diff: 'g-diff' };
+function syncSettingsUI() {
+  for (const k in SLIDERS) { $('s-' + k).value = settings[k]; $('o-' + k).textContent = SLIDERS[k](settings[k]); }
+  for (const k in GROUPS) {
+    const v = k === 'view' ? view.mode : settings[k];
+    $(GROUPS[k]).querySelectorAll('button').forEach((b) => b.classList.toggle('sel', b.dataset.v === v));
+  }
+}
+for (const k in SLIDERS) $('s-' + k).addEventListener('input', (e) => { settings[k] = +e.target.value; window.__vol = settings.vol; saveSettings(); applySettings(); syncSettingsUI(); });
+for (const k in GROUPS) $(GROUPS[k]).addEventListener('click', (e) => {
+  const v = e.target.closest('button')?.dataset.v; if (!v) return;
+  if (k === 'view') { if (view.mode !== v) { view.mode = v; store.set('ironarena.view2', v); applyView(); } }
+  else { settings[k] = v; saveSettings(); applySettings(); }
+  syncSettingsUI();
+});
+function openSettings(from) {
+  settingsFrom = from;
+  if (from === 'game') pauseGame();
+  ui.start.classList.add('hidden'); ui.pause.classList.add('hidden');
+  syncSettingsUI();
+  $('settings-screen').classList.remove('hidden');
+}
+$('settings-done').addEventListener('click', () => {
+  $('settings-screen').classList.add('hidden');
+  if (settingsFrom === 'menu') ui.start.classList.remove('hidden');
+  else ui.pause.classList.remove('hidden');
+});
+$('settings-reset').addEventListener('click', () => {
+  Object.assign(settings, DEFAULTS); window.__vol = settings.vol; saveSettings();
+  view.mode = 'tp'; store.set('ironarena.view2', 'tp'); applyView();
+  applySettings(); syncSettingsUI();
+});
+$('settings-btn').addEventListener('click', () => openSettings('menu'));
+$('pause-settings-btn').addEventListener('click', () => openSettings('pause'));
+$('b-gear').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); openSettings('game'); });
+window.__vol = settings.vol;
+applySettings();
 function gameOverQuiet() {   // leave a run from the pause menu without the game-over screen
   const best = Math.max(store.get('ironarena.best', 0), state.score);
   store.set('ironarena.best', best);
