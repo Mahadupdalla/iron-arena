@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arena Shooter</title>
+<style>
+  /* ---------- Page & overlay styling ---------- */
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; user-select: none; }
+  canvas { display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  .hidden { display: none !important; }
+
+  /* Dynamic crosshair: four bars whose gap is set from JS (--gap), red over an opponent */
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 0; height: 0; --gap: 6px; --col: rgba(255,255,255,0.95); }
+  #crosshair i { position: absolute; background: var(--col); box-shadow: 0 0 2px #000; }
+  #crosshair .t { left: -1px; width: 2px; height: 8px; top: calc(-1 * var(--gap) - 8px); }
+  #crosshair .b { left: -1px; width: 2px; height: 8px; top: var(--gap); }
+  #crosshair .l { top: -1px; height: 2px; width: 8px; left: calc(-1 * var(--gap) - 8px); }
+  #crosshair .r { top: -1px; height: 2px; width: 8px; left: var(--gap); }
+  #crosshair .d { left: -1px; top: -1px; width: 2px; height: 2px; }
+  #crosshair.enemy { --col: #ff3b30; }
+  #crosshair.ads i:not(.d) { opacity: 0.35; }
+
+  /* Hit marker: an X that flashes when a shot lands (orange = headshot, red = kill) */
+  #hitmarker { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; opacity: 0; transition: opacity 0.15s; --hm: #fff; }
+  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 12px; top: 0; width: 2px; height: 26px; background: var(--hm); box-shadow: 0 0 2px #000; }
+  #hitmarker::before { transform: rotate(45deg); }
+  #hitmarker::after  { transform: rotate(-45deg); }
+  #hitmarker.show { opacity: 1; transition: none; }
+  #hitmarker.head { --hm: #ffb020; }
+  #hitmarker.kill { --hm: #ff3b30; transform: scale(1.35); }
+
+  /* Damage direction arrows: each one is rotated around the screen centre */
+  .dmg-arrow { position: absolute; left: 50%; top: 50%; width: 0; height: 0; opacity: 0; }
+  .dmg-arrow::before { content: ""; position: absolute; left: -22px; top: -150px; border-left: 22px solid transparent; border-right: 22px solid transparent; border-bottom: 34px solid rgba(255,40,30,0.9); filter: drop-shadow(0 0 4px rgba(0,0,0,0.6)); }
+
+  .panel { position: absolute; background: rgba(0,0,0,0.45); border-radius: 8px; padding: 10px 14px; text-shadow: 0 1px 2px #000; }
+  #health-panel { left: 20px; bottom: 20px; width: 260px; }
+  .label { font-size: 12px; letter-spacing: 0.12em; opacity: 0.8; }
+  #health-bar { margin-top: 6px; height: 14px; background: rgba(255,255,255,0.15); border-radius: 7px; overflow: hidden; }
+  #health-fill { height: 100%; width: 100%; background: #3ddc6a; transition: width 0.15s, background 0.3s; }
+  #health-text { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  #ammo-panel { right: 20px; bottom: 20px; text-align: right; min-width: 140px; }
+  #ammo { font-size: 34px; font-weight: 800; }
+  #ammo small { font-size: 18px; opacity: 0.7; }
+  #reload-text { font-size: 13px; color: #ffd84d; height: 16px; }
+  #score-panel { left: 20px; top: 20px; }
+  #wave-panel  { right: 20px; top: 20px; text-align: right; }
+  .big { font-size: 26px; font-weight: 800; }
+  #enemies-left { font-size: 13px; opacity: 0.85; }
+  #fps { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); font-size: 11px; opacity: 0.5; }
+  #stance { position: absolute; left: 290px; bottom: 26px; font-size: 12px; letter-spacing: 0.1em; opacity: 0.8; text-shadow: 0 1px 2px #000; }
+
+  /* Controls panel shown during play (toggle with H) */
+  #controls-panel { left: 20px; top: 100px; font-size: 13px; line-height: 1.55; }
+  #controls-panel .row { display: flex; gap: 10px; justify-content: space-between; }
+  #controls-panel b { font-weight: 700; color: #ffd84d; }
+
+  #banner { position: absolute; left: 0; right: 0; top: 26%; text-align: center; font-size: 48px; font-weight: 900; letter-spacing: 0.1em; text-shadow: 0 3px 10px #000; opacity: 0; transition: opacity 0.4s; }
+  #banner.show { opacity: 1; }
+
+  /* Red flash when the player is hit */
+  #damage { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(255,0,0,0.15) 30%, rgba(200,0,0,0.85) 100%); }
+
+  /* Full-screen menus */
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(5,10,20,0.78); }
+  .card { background: rgba(20,28,45,0.95); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 26px 34px; max-width: 480px; width: calc(100% - 32px); box-sizing: border-box; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: calc(100% - 32px); overflow: auto; }
+  .card h1 { margin: 0 0 6px; font-size: 36px; letter-spacing: 0.08em; }
+  .card p { opacity: 0.8; margin: 6px 0 16px; }
+  .controls { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; text-align: left; margin: 0 auto 20px; width: fit-content; font-size: 15px; }
+  kbd { display: inline-block; min-width: 18px; padding: 2px 7px; border-radius: 5px; background: #2d3a55; border: 1px solid #4a5a7c; font-family: inherit; font-size: 13px; text-align: center; }
+  button { font: inherit; font-size: 18px; font-weight: 700; padding: 12px 34px; border: 0; border-radius: 10px; background: #ff5a3c; color: #fff; cursor: pointer; }
+  button:hover { background: #ff7559; }
+  .final { font-size: 52px; font-weight: 900; margin: 8px 0 4px; color: #ffd84d; }
+</style>
+</head>
+<body>
+
+<!-- ============ HUD ============ -->
+<div id="hud" class="hidden">
+  <div id="damage"></div>
+  <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><i class="d"></i></div>
+  <div id="hitmarker"></div>
+  <div class="dmg-arrow"></div><div class="dmg-arrow"></div><div class="dmg-arrow"></div><div class="dmg-arrow"></div>
+  <div id="fps"></div>
+  <div id="banner"></div>
+
+  <div id="score-panel" class="panel"><div class="label">SCORE</div><div id="score" class="big">0</div></div>
+  <div id="wave-panel" class="panel"><div class="label">WAVE</div><div id="wave" class="big">1</div><div id="enemies-left"></div></div>
+
+  <!-- Controls panel (H to hide/show) -->
+  <div id="controls-panel" class="panel">
+    <div class="label" style="margin-bottom:4px">CONTROLS</div>
+    <div class="row"><b>W A S D</b><span>Move</span></div>
+    <div class="row"><b>Space</b><span>Jump</span></div>
+    <div class="row"><b>Shift</b><span>Sprint</span></div>
+    <div class="row"><b>C</b><span>Crouch</span></div>
+    <div class="row"><b>Mouse</b><span>Look</span></div>
+    <div class="row"><b>Left click</b><span>Shoot</span></div>
+    <div class="row"><b>Right click</b><span>Aim</span></div>
+    <div class="row"><b>R</b><span>Reload</span></div>
+    <div class="row"><b>H</b><span>Hide/show this panel</span></div>
+  </div>
+
+  <div id="health-panel" class="panel">
+    <div class="label">HEALTH</div>
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div id="health-text">100</div>
+  </div>
+  <div id="stance"></div>
+
+  <div id="ammo-panel" class="panel">
+    <div class="label">AMMO</div>
+    <div id="ammo">24<small> / 24</small></div>
+    <div id="reload-text"></div>
+  </div>
+</div>
+
+<!-- ============ Start screen ============ -->
+<div id="start-screen" class="screen">
+  <div class="card">
+    <h1>ARENA SHOOTER</h1>
+    <p>Soldiers attack in waves. They take cover, flank and shoot back. Stay alive.</p>
+    <div class="controls">
+      <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></span><span>Move</span>
+      <span><kbd>Space</kbd></span><span>Jump</span>
+      <span><kbd>Shift</kbd></span><span>Sprint</span>
+      <span><kbd>C</kbd></span><span>Crouch (hold)</span>
+      <span><kbd>Mouse</kbd></span><span>Look around</span>
+      <span><kbd>Left click</kbd></span><span>Shoot (hold for auto)</span>
+      <span><kbd>Right click</kbd></span><span>Aim down sights (hold)</span>
+      <span><kbd>R</kbd></span><span>Reload</span>
+      <span><kbd>H</kbd></span><span>Hide or show the controls panel</span>
+      <span><kbd>Esc</kbd></span><span>Pause</span>
+    </div>
+    <button id="start-btn">START</button>
+  </div>
+</div>
+
+<!-- ============ Pause screen ============ -->
+<div id="pause-screen" class="screen hidden">
+  <div class="card">
+    <h1>PAUSED</h1>
+    <p>Click below to jump back in.</p>
+    <button id="resume-btn">RESUME</button>
+  </div>
+</div>
+
+<!-- ============ Game-over screen ============ -->
+<div id="gameover-screen" class="screen hidden">
+  <div class="card">
+    <h1>GAME OVER</h1>
+    <p>Final score</p>
+    <div id="final-score" class="final">0</div>
+    <p id="final-wave">You reached wave 1</p>
+    <button id="restart-btn">RESTART</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+/* =====================================================================
+   CONFIG — every gameplay number lives here, so tuning is one place.
+   ===================================================================== */
+const CONFIG = {
+  player: {
+    maxHealth: 100,
+    walkSpeed: 6,           // units per second
+    sprintSpeed: 9.5,
+    crouchSpeed: 3,
+    jumpSpeed: 7.2,         // enough to jump onto 1.2-high boxes
+    gravity: 20,
+    radius: 0.4,            // collision radius
+    height: 1.75,           // standing body height
+    crouchHeight: 1.15,
+    eyeHeight: 1.6,         // camera height when standing
+    crouchEyeHeight: 1.0,
+    mouseSensitivity: 0.0022,
+  },
+  weapon: {
+    magSize: 24,
+    fireRate: 8,            // shots per second while holding the mouse
+    reloadTime: 1.8,        // seconds
+    bodyDamage: 34,         // damage per torso hit (opponents have 100 health on wave 1)
+    headshotMultiplier: 3,  // head hit = bodyDamage x this
+    limbMultiplier: 0.75,   // arm / leg hit = bodyDamage x this
+    range: 150,
+    recoilKick: 0.01,       // view kick per shot (radians)
+    // Spread (radians). The crosshair widens and tightens with this value.
+    baseSpread: 0.004,
+    moveSpread: 0.035,      // added at full walking speed
+    airSpread: 0.05,        // added while in the air
+    bloomPerShot: 0.012,    // added each shot, recovers quickly
+    maxBloom: 0.06,
+    crouchSpreadMult: 0.6,
+    adsSpreadMult: 0.3,     // aiming down sights is much tighter
+    adsFov: 45,             // zoomed field of view
+    hipFov: 75,
+  },
+  soldier: {
+    health: 100,
+    healthPerWave: 10,      // extra health each wave
+    walkSpeed: 2.2,         // patrol speed
+    runSpeed: 4.6,          // combat speed on wave 1
+    speedPerWave: 0.06,     // +6% speed each wave...
+    maxSpeedMult: 1.6,      // ...up to 1.6x
+    // Aim: random error cone in radians. Lower = more accurate.
+    aimError: 0.065,
+    accuracyPerWave: 0.12,  // each wave divides aimError by (1 + this * (wave - 1))
+    damage: 7,              // damage per bullet that hits you
+    damagePerWave: 1,       // extra damage each wave
+    fireInterval: 0.14,     // seconds between shots inside a burst
+    burstMin: 2, burstMax: 4,
+    burstPauseMin: 0.7, burstPauseMax: 1.5,
+    magSize: 12,
+    reloadTime: 2.2,
+    reactionTime: 0.55,     // delay between spotting you and the first shot
+    sightRange: 60,
+    fireRange: 38,          // they only shoot when closer than this (otherwise they advance)
+    fovDegrees: 130,        // field of view for spotting you
+    hearShotRange: 45,      // they hear your gunshots this far away
+    hearSprintRange: 15,    // ...your sprinting footsteps
+    hearWalkRange: 7,       // ...your walking footsteps (crouching is silent)
+    retreatHealth: 0.4,     // retreat to far cover below 40% health
+    flankerChance: 0.35,    // share of soldiers that try to flank you
+    idealRange: 15,         // preferred fighting distance
+    scorePerKill: 100,
+    headshotBonus: 50,
+  },
+  waves: {
+    baseCount: 3,           // soldiers in wave 1
+    extraPerWave: 2,        // extra soldiers each new wave
+    maxAlive: 8,            // soldiers alive at once (performance)
+    spawnInterval: 1.5,
+    timeBetweenWaves: 4,
+    healOnClear: 30,
+    clearBonusPerWave: 250, // bonus score = this * wave number
+    huntAfter: 12,          // seconds before unaware soldiers start searching near you
+  },
+  arena: { size: 60, wallHeight: 6 },
+  visual: {
+    skyColor: 0x8ec5ff,
+    maxPixelRatio: 1.5,     // lower to 1 if your laptop struggles
+    shadows: true,
+  },
+};
+
+/* =====================================================================
+   DOM handles
+   ===================================================================== */
+const $ = (id) => document.getElementById(id);
+const ui = {
+  hud: $('hud'), start: $('start-screen'), pause: $('pause-screen'), over: $('gameover-screen'),
+  score: $('score'), wave: $('wave'), enemiesLeft: $('enemies-left'),
+  healthFill: $('health-fill'), healthText: $('health-text'), stance: $('stance'),
+  ammo: $('ammo'), reloadText: $('reload-text'), crosshair: $('crosshair'),
+  hitmarker: $('hitmarker'), damage: $('damage'), banner: $('banner'), fps: $('fps'),
+  controls: $('controls-panel'), finalScore: $('final-score'), finalWave: $('final-wave'),
+  arrows: [...document.querySelectorAll('.dmg-arrow')].map((el) => ({ el, life: 0 })),
+};
+
+/* =====================================================================
+   Renderer, scene, cameras
+   ===================================================================== */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.visual.maxPixelRatio));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = CONFIG.visual.shadows;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.autoClear = false;                 // we draw the world, then the gun on top
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(CONFIG.visual.skyColor);
+scene.fog = new THREE.Fog(CONFIG.visual.skyColor, 50, 130);
+
+const camera = new THREE.PerspectiveCamera(CONFIG.weapon.hipFov, window.innerWidth / window.innerHeight, 0.05, 250);
+camera.rotation.order = 'YXZ';              // yaw first, then pitch: standard FPS look
+scene.add(camera);
+
+// The gun is drawn in its own little scene so it never clips into walls.
+const gunScene = new THREE.Scene();
+const gunCamera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 10);
+gunScene.add(new THREE.HemisphereLight(0xdfefff, 0x404050, 2.0));
+const gunSun = new THREE.DirectionalLight(0xffffff, 1.8);
+gunSun.position.set(1, 2, 1);
+gunScene.add(gunSun);
+
+/* ---------- Lighting ---------- */
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x5a4a3a, 1.1));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(25, 45, 15);
+sun.castShadow = CONFIG.visual.shadows;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 38, bottom: -38, near: 1, far: 120 });
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+
+// Muzzle light: always in the scene (intensity 0 when idle) so shaders never recompile.
+const muzzleLight = new THREE.PointLight(0xffc060, 0, 10, 2);
+scene.add(muzzleLight);
+
+/* =====================================================================
+   Level: floor, walls, crates, platforms
+   Every solid box is stored in `obstacles` as an axis-aligned box for collision,
+   line-of-sight and bullet checks.
+   ===================================================================== */
+const obstacles = [];      // { min, max, cover } — cover=false for the outer walls
+const solidMeshes = [];    // meshes the player's bullets can hit
+
+function makeGridTexture(base, line, cells) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = line; g.lineWidth = 3;
+  const step = 256 / cells;
+  for (let i = 0; i <= cells; i++) {
+    g.beginPath(); g.moveTo(i * step, 0); g.lineTo(i * step, 256); g.stroke();
+    g.beginPath(); g.moveTo(0, i * step); g.lineTo(256, i * step); g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+function makeCrateTexture(base, dark) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = dark; g.lineWidth = 10; g.strokeRect(5, 5, 118, 118);
+  g.lineWidth = 8; g.beginPath(); g.moveTo(10, 10); g.lineTo(118, 118); g.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const S = CONFIG.arena.size / 2;
+const floorTex = makeGridTexture('#6d7a62', '#5b6752', 4);
+floorTex.repeat.set(CONFIG.arena.size / 4, CONFIG.arena.size / 4);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.arena.size, CONFIG.arena.size), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.95 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+solidMeshes.push(floor);
+
+const MAT = {
+  wall:     new THREE.MeshStandardMaterial({ color: 0x9aa3b5, roughness: 0.9 }),
+  crate:    new THREE.MeshStandardMaterial({ map: makeCrateTexture('#b07a3c', '#7a4f22'), roughness: 0.8 }),
+  crate2:   new THREE.MeshStandardMaterial({ map: makeCrateTexture('#8a8f45', '#5c602a'), roughness: 0.8 }),
+  platform: new THREE.MeshStandardMaterial({ color: 0x5f6f8f, roughness: 0.7 }),
+  pillar:   new THREE.MeshStandardMaterial({ color: 0xc9b89a, roughness: 0.85 }),
+  cover:    new THREE.MeshStandardMaterial({ color: 0x7d8595, roughness: 0.85 }),
+};
+
+/** Add a solid box. (cx, cz) = centre on the floor, w/h/d = size, y0 = bottom height. */
+function addBox(cx, cz, w, h, d, material, y0 = 0, cover = true) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  mesh.position.set(cx, y0 + h / 2, cz);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  solidMeshes.push(mesh);
+  obstacles.push({ min: new THREE.Vector3(cx - w / 2, y0, cz - d / 2), max: new THREE.Vector3(cx + w / 2, y0 + h, cz + d / 2), cover: cover && y0 === 0 && h >= 0.95 });
+  return mesh;
+}
+
+// Outer walls (not used as cover spots)
+const WH = CONFIG.arena.wallHeight, AS = CONFIG.arena.size;
+addBox(0, -S - 0.5, AS + 2, WH, 1, MAT.wall, 0, false);
+addBox(0,  S + 0.5, AS + 2, WH, 1, MAT.wall, 0, false);
+addBox(-S - 0.5, 0, 1, WH, AS, MAT.wall, 0, false);
+addBox( S + 0.5, 0, 1, WH, AS, MAT.wall, 0, false);
+
+// Centre platform (jumpable, 1.1 high) with a crate on top
+addBox(0, 0, 8, 1.1, 8, MAT.platform);
+addBox(-2.5, -2.5, 1.5, 1.0, 1.5, MAT.crate, 1.1);
+
+// Four corner platforms (2.0 high): jump on the step crate first
+for (const [x, z] of [[-19, -19], [19, -19], [-19, 19], [19, 19]]) {
+  addBox(x, z, 7, 2.0, 7, MAT.platform);
+  addBox(x - Math.sign(x) * 4.6, z, 2.2, 1.0, 2.2, MAT.crate);
+}
+// Pillars
+for (const [x, z] of [[-10, 0], [10, 0], [0, -11], [0, 11]]) addBox(x, z, 1.6, 4.5, 1.6, MAT.pillar);
+// Low cover walls
+addBox(-8, -18, 6, 1.4, 0.8, MAT.cover);
+addBox( 8,  18, 6, 1.4, 0.8, MAT.cover);
+addBox(-20, 6, 0.8, 1.4, 6, MAT.cover);
+addBox( 20, -6, 0.8, 1.4, 6, MAT.cover);
+addBox(-14, -4, 4, 1.3, 0.8, MAT.cover);
+addBox( 14,  4, 4, 1.3, 0.8, MAT.cover);
+// Scattered crates (x, z, size, material)
+for (const [x, z, s, m] of [
+  [-14, 8, 1.4, MAT.crate], [-13.2, 9.6, 1.0, MAT.crate2], [14, -9, 1.4, MAT.crate],
+  [6, -6.5, 1.2, MAT.crate2], [-6, 7, 1.2, MAT.crate], [16, 12, 1.6, MAT.crate2],
+  [-16, -11, 1.6, MAT.crate], [4, 22, 1.2, MAT.crate], [-5, -24, 1.4, MAT.crate2],
+  [24, 2, 1.2, MAT.crate], [-24, -3, 1.2, MAT.crate2], [11, 24, 1.0, MAT.crate2],
+  [-4, 18, 1.3, MAT.crate], [6, -22, 1.3, MAT.crate],
+]) addBox(x, z, s, s, s, m);
+
+const coverBoxes = obstacles.filter((b) => b.cover);
+
+/* =====================================================================
+   Geometry helpers: collision, line of sight
+   ===================================================================== */
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const rand = (a, b) => a + Math.random() * (b - a);
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/**
+ * Push a circle (centre pos.x/pos.z, radius r, vertical span bottom..top) out of every box.
+ * Boxes whose top is below `bottom` are ignored (you're standing on them).
+ * Returns the box it bumped into (or null).
+ */
+function collideCircle(pos, r, bottom, top) {
+  let pushed = null;
+  for (const b of obstacles) {
+    if (bottom >= b.max.y - 0.06 || top <= b.min.y) continue;
+    const cx = clamp(pos.x, b.min.x, b.max.x), cz = clamp(pos.z, b.min.z, b.max.z);
+    const dx = pos.x - cx, dz = pos.z - cz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 >= r * r) continue;
+    pushed = b;
+    if (d2 > 1e-8) {
+      const d = Math.sqrt(d2), push = r - d;
+      pos.x += (dx / d) * push; pos.z += (dz / d) * push;
+    } else {   // centre inside the box: leave by the nearest side
+      const left = pos.x - b.min.x, right = b.max.x - pos.x, back = pos.z - b.min.z, front = b.max.z - pos.z;
+      const m = Math.min(left, right, back, front);
+      if (m === left) pos.x = b.min.x - r; else if (m === right) pos.x = b.max.x + r;
+      else if (m === back) pos.z = b.min.z - r; else pos.z = b.max.z + r;
+    }
+  }
+  return pushed;
+}
+
+function overlapsXZ(pos, r, b) {
+  const cx = clamp(pos.x, b.min.x, b.max.x), cz = clamp(pos.z, b.min.z, b.max.z);
+  const dx = pos.x - cx, dz = pos.z - cz;
+  return dx * dx + dz * dz < r * r;
+}
+
+/** Is a floor spot free for something of radius r? */
+function spotFree(x, z, r) {
+  if (Math.abs(x) > S - r - 0.3 || Math.abs(z) > S - r - 0.3) return false;
+  const p = { x, z };
+  return !obstacles.some((b) => overlapsXZ(p, r, b));
+}
+
+/**
+ * Fraction (0..1) along the segment a→b where it first hits a box, or Infinity if clear.
+ * Uses the "slab" method. Also treats the floor (y = 0) as solid.
+ */
+function segmentBlockT(ax, ay, az, bx, by, bz) {
+  let best = Infinity;
+  const dx = bx - ax, dy = by - ay, dz = bz - az;
+  if (by < 0 && ay > 0) best = ay / (ay - by);
+  for (const b of obstacles) {
+    let tmin = 0, tmax = 1;
+    // X slab
+    if (Math.abs(dx) < 1e-9) { if (ax < b.min.x || ax > b.max.x) continue; }
+    else { let t1 = (b.min.x - ax) / dx, t2 = (b.max.x - ax) / dx; if (t1 > t2) [t1, t2] = [t2, t1]; tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2); if (tmin > tmax) continue; }
+    // Y slab
+    if (Math.abs(dy) < 1e-9) { if (ay < b.min.y || ay > b.max.y) continue; }
+    else { let t1 = (b.min.y - ay) / dy, t2 = (b.max.y - ay) / dy; if (t1 > t2) [t1, t2] = [t2, t1]; tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2); if (tmin > tmax) continue; }
+    // Z slab
+    if (Math.abs(dz) < 1e-9) { if (az < b.min.z || az > b.max.z) continue; }
+    else { let t1 = (b.min.z - az) / dz, t2 = (b.max.z - az) / dz; if (t1 > t2) [t1, t2] = [t2, t1]; tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2); if (tmin > tmax) continue; }
+    if (tmin < best) best = tmin;
+  }
+  return best;
+}
+const clearLine = (a, b) => segmentBlockT(a.x, a.y, a.z, b.x, b.y, b.z) === Infinity;
+
+/* =====================================================================
+   Sound effects — all synthesised with the Web Audio API.
+   Every effect takes an optional {vol, pan} so far-away sounds are quieter
+   and come from the correct side.
+   ===================================================================== */
+const Sound = {
+  ctx: null, master: null, noiseBuf: null,
+
+  init() {
+    if (this.ctx) { this.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.45;
+    this.master.connect(this.ctx.destination);
+    const len = this.ctx.sampleRate;          // one second of white noise, reused
+    this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = this.noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  },
+
+  /** Output node with optional stereo panning. */
+  out(pan) {
+    if (!pan || !this.ctx.createStereoPanner) return this.master;
+    const p = this.ctx.createStereoPanner();
+    p.pan.value = clamp(pan, -1, 1);
+    p.connect(this.master);
+    return p;
+  },
+
+  tone(type, f0, f1, dur, vol, delay = 0, pan = 0) {
+    if (!this.ctx || vol < 0.005) return;
+    const t = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g).connect(this.out(pan));
+    osc.start(t); osc.stop(t + dur + 0.02);
+  },
+
+  noise(dur, filterType, f0, f1, vol, delay = 0, pan = 0) {
+    if (!this.ctx || vol < 0.005) return;
+    const t = this.ctx.currentTime + delay;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuf;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = filterType;
+    filter.frequency.setValueAtTime(f0, t);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(filter).connect(g).connect(this.out(pan));
+    src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.02);
+  },
+
+  // --- Player sounds ---
+  shoot()    { this.noise(0.16, 'lowpass', 5000, 300, 0.9); this.tone('sine', 160, 45, 0.12, 0.7); },
+  hit()      { this.tone('square', 900, 1500, 0.05, 0.16); },
+  headshot() { this.tone('triangle', 1800, 2400, 0.12, 0.3); },
+  empty()    { this.tone('square', 1300, 1300, 0.025, 0.15); },
+  hurt()     { this.tone('sawtooth', 200, 70, 0.22, 0.35); this.noise(0.08, 'bandpass', 900, 400, 0.4); },
+  jump()     { this.tone('sine', 220, 330, 0.08, 0.06); },
+  footstep(vol) { this.noise(0.07, 'lowpass', 600, 120, vol); this.tone('sine', 90, 50, 0.06, vol * 0.6); },
+  wave()     { this.tone('triangle', 440, 440, 0.15, 0.25); this.tone('triangle', 660, 660, 0.25, 0.25, 0.15); },
+  reload() {
+    const t = CONFIG.weapon.reloadTime;
+    this.noise(0.05, 'bandpass', 2200, 2200, 0.6, 0.05);     // mag out
+    this.tone('square', 400, 300, 0.04, 0.1, 0.06);
+    this.noise(0.06, 'bandpass', 1600, 1600, 0.7, t * 0.6);  // mag in
+    this.noise(0.04, 'bandpass', 3000, 3000, 0.6, t * 0.9);  // slide click
+    this.tone('square', 900, 700, 0.03, 0.12, t * 0.9);
+  },
+  // --- Opponent sounds (positional) ---
+  enemyShot(vol, pan)  { this.noise(0.18, 'lowpass', 3200, 250, 0.8 * vol, 0, pan); this.tone('square', 120, 50, 0.1, 0.25 * vol, 0, pan); },
+  enemyStep(vol, pan)  { this.noise(0.05, 'lowpass', 500, 120, vol * 0.5, 0, pan); },
+  enemyDeath(vol, pan) { this.tone('sawtooth', 260, 90, 0.4, 0.3 * vol, 0, pan); },
+  enemyReload(vol, pan){ this.noise(0.05, 'bandpass', 2000, 2000, 0.4 * vol, 0, pan); this.noise(0.04, 'bandpass', 2800, 2800, 0.4 * vol, 0.9, pan); },
+  whiz()     { this.noise(0.12, 'bandpass', 4000, 1500, 0.25); },
+};
+
+/** Volume and stereo pan for a sound at a world position, relative to the player. */
+function soundAt(pos) {
+  const dx = pos.x - player.pos.x, dz = pos.z - player.pos.z;
+  const dist = Math.hypot(dx, dz) || 1;
+  const right = (dx * Math.cos(player.yaw) - dz * Math.sin(player.yaw)) / dist;
+  return { vol: 1 / (1 + dist * 0.07), pan: right * 0.8 };
+}
+
+/* =====================================================================
+   Player weapon model (boxes + cylinders) + muzzle flash
+   ===================================================================== */
+const gun = new THREE.Group();
+const gunMetal = new THREE.MeshStandardMaterial({ color: 0x3a3f48, metalness: 0.3, roughness: 0.4 });
+const gunAccent = new THREE.MeshStandardMaterial({ color: 0xff5a3c, metalness: 0.2, roughness: 0.5 });
+const gunGrip = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+{
+  const add = (geo, mat, x, y, z, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; gun.add(m); return m; };
+  add(new THREE.BoxGeometry(0.09, 0.11, 0.42), gunMetal, 0, 0, 0);                         // body
+  add(new THREE.BoxGeometry(0.07, 0.03, 0.36), gunAccent, 0, 0.07, -0.02);                 // top rail
+  add(new THREE.CylinderGeometry(0.022, 0.022, 0.26, 12), gunMetal, 0, 0.015, -0.33, Math.PI / 2); // barrel
+  add(new THREE.BoxGeometry(0.07, 0.18, 0.09), gunGrip, 0, -0.12, 0.12, 0.25);             // grip
+  add(new THREE.BoxGeometry(0.06, 0.14, 0.07), gunMetal, 0, -0.1, -0.06);                  // magazine
+  add(new THREE.BoxGeometry(0.02, 0.035, 0.02), gunAccent, 0, 0.1, -0.18);                 // front sight
+  add(new THREE.BoxGeometry(0.015, 0.03, 0.02), gunAccent, -0.02, 0.1, 0.15);              // rear sight (two posts with a notch)
+  add(new THREE.BoxGeometry(0.015, 0.03, 0.02), gunAccent, 0.02, 0.1, 0.15);
+}
+const muzzleFlash = new THREE.Group();
+{
+  const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const quad = new THREE.PlaneGeometry(0.16, 0.16);
+  const a = new THREE.Mesh(quad, flashMat);
+  const b = new THREE.Mesh(quad, flashMat); b.rotation.y = Math.PI / 2;
+  const c = new THREE.Mesh(quad, flashMat); c.rotation.x = Math.PI / 2;
+  muzzleFlash.add(a, b, c, new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff })));
+  muzzleFlash.position.set(0, 0.015, -0.5);
+  muzzleFlash.visible = false;
+  gun.add(muzzleFlash);
+}
+const GUN_HIP = new THREE.Vector3(0.16, -0.15, -0.42);  // gun position at the hip
+const GUN_ADS = new THREE.Vector3(0, -0.078, -0.42);    // gun position when aiming down sights
+gun.scale.setScalar(0.5);                               // grow/shrink the whole gun here
+gun.position.copy(GUN_HIP);
+gunScene.add(gun);
+
+/* =====================================================================
+   Particles (sparks, blood puffs, dust) — a fixed pool that is reused
+   ===================================================================== */
+const particleGeo = new THREE.BoxGeometry(1, 1, 1);
+const particleMats = {};
+const particleMat = (color) => particleMats[color] || (particleMats[color] = new THREE.MeshBasicMaterial({ color }));
+const PARTICLE_COUNT = 250;
+const particles = [];
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  const m = new THREE.Mesh(particleGeo, particleMat(0xffffff));
+  m.visible = false;
+  scene.add(m);
+  particles.push({ mesh: m, vel: new THREE.Vector3(), life: 0, maxLife: 1, size: 0.1, gravity: 1 });
+}
+let particleCursor = 0;
+function spawnParticles(pos, count, color, speed, size, life, gravity = 1) {
+  for (let i = 0; i < count; i++) {
+    const p = particles[particleCursor];
+    particleCursor = (particleCursor + 1) % PARTICLE_COUNT;
+    p.mesh.material = particleMat(color);
+    p.mesh.position.copy(pos);
+    p.mesh.visible = true;
+    p.vel.set(Math.random() * 2 - 1, Math.random() * 2 - 0.5, Math.random() * 2 - 1).normalize().multiplyScalar(speed * (0.4 + Math.random() * 0.8));
+    p.life = p.maxLife = life * (0.6 + Math.random() * 0.6);
+    p.size = size; p.gravity = gravity;
+  }
+}
+function updateParticles(dt) {
+  for (const p of particles) {
+    if (p.life <= 0) continue;
+    p.life -= dt;
+    if (p.life <= 0) { p.mesh.visible = false; continue; }
+    p.vel.y -= 12 * p.gravity * dt;
+    p.mesh.position.addScaledVector(p.vel, dt);
+    if (p.mesh.position.y < 0.02) { p.mesh.position.y = 0.02; p.vel.y *= -0.3; p.vel.x *= 0.6; p.vel.z *= 0.6; }
+    const s = p.size * (p.life / p.maxLife);
+    p.mesh.scale.set(s, s, s);
+  }
+}
+
+/* ---------- Bullet tracers for opponents' shots ---------- */
+const tracerMat = new THREE.MeshBasicMaterial({ color: 0xffe7a0, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+const tracers = [];
+for (let i = 0; i < 16; i++) {
+  const m = new THREE.Mesh(particleGeo, tracerMat);
+  m.visible = false;
+  scene.add(m);
+  tracers.push({ mesh: m, life: 0 });
+}
+let tracerCursor = 0;
+function spawnTracer(from, to) {
+  const t = tracers[tracerCursor];
+  tracerCursor = (tracerCursor + 1) % tracers.length;
+  const len = from.distanceTo(to);
+  t.mesh.position.copy(from).lerp(to, 0.5);
+  t.mesh.scale.set(0.025, 0.025, len);
+  t.mesh.lookAt(to);
+  t.mesh.visible = true;
+  t.life = 0.06;
+}
+function updateTracers(dt) {
+  for (const t of tracers) if (t.life > 0 && (t.life -= dt) <= 0) t.mesh.visible = false;
+}
+
+/* =====================================================================
+   Soldiers — human-shaped opponents built from boxes
+   Body hierarchy (origin at the feet):
+     group → hips → thighL/R → kneeL/R (shins)
+                  → torso → head, armL/R, rifle
+   ===================================================================== */
+const SG = {   // shared soldier geometry
+  thigh: new THREE.BoxGeometry(0.17, 0.46, 0.19),
+  shin: new THREE.BoxGeometry(0.15, 0.46, 0.17),
+  boot: new THREE.BoxGeometry(0.17, 0.09, 0.27),
+  torso: new THREE.BoxGeometry(0.46, 0.56, 0.27),
+  vest: new THREE.BoxGeometry(0.48, 0.34, 0.3),
+  head: new THREE.BoxGeometry(0.24, 0.26, 0.25),
+  helmet: new THREE.BoxGeometry(0.3, 0.13, 0.31),
+  visor: new THREE.BoxGeometry(0.2, 0.05, 0.02),
+  arm: new THREE.BoxGeometry(0.12, 0.56, 0.13),
+  rifle: new THREE.BoxGeometry(0.07, 0.11, 0.7),
+  muzzle: new THREE.SphereGeometry(0.08, 8, 6),
+};
+const SM = {   // shared soldier materials (the uniform and skin are per-soldier so they can flash)
+  pants: new THREE.MeshStandardMaterial({ color: 0x3b3f4a, roughness: 0.9 }),
+  boots: new THREE.MeshStandardMaterial({ color: 0x1d1d1f, roughness: 0.9 }),
+  vest: new THREE.MeshStandardMaterial({ color: 0x2f3a2a, roughness: 0.8 }),
+  helmet: new THREE.MeshStandardMaterial({ color: 0x2c3528, roughness: 0.6 }),
+  visor: new THREE.MeshBasicMaterial({ color: 0x111111 }),
+  rifle: new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 0.5, metalness: 0.4 }),
+  flash: new THREE.MeshBasicMaterial({ color: 0xffd27a }),
+};
+
+const soldiers = [];   // alive and dying soldiers
+
+function buildSoldier() {
+  const uniform = new THREE.MeshStandardMaterial({ color: 0xa8322b, roughness: 0.8 });
+  const skin = new THREE.MeshStandardMaterial({ color: 0xd9a77a, roughness: 0.8 });
+  const hitMeshes = [];
+  const mesh = (geo, mat, part, parent, x, y, z) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    if (part) { m.userData.part = part; hitMeshes.push(m); }
+    parent.add(m);
+    return m;
+  };
+  const group = new THREE.Group();
+  group.rotation.order = 'YXZ';      // turn (yaw) first, so falling over happens relative to facing
+  const hips = new THREE.Group(); hips.position.y = 0.95; group.add(hips);
+
+  const legs = [];
+  for (const side of [-1, 1]) {
+    const thigh = new THREE.Group(); thigh.position.set(side * 0.12, 0, 0); hips.add(thigh);
+    mesh(SG.thigh, SM.pants, 'limb', thigh, 0, -0.23, 0);
+    const knee = new THREE.Group(); knee.position.y = -0.46; thigh.add(knee);
+    mesh(SG.shin, SM.pants, 'limb', knee, 0, -0.23, 0);
+    mesh(SG.boot, SM.boots, null, knee, 0, -0.45, 0.04);
+    legs.push({ thigh, knee });
+  }
+  const torso = new THREE.Group(); hips.add(torso);
+  mesh(SG.torso, uniform, 'body', torso, 0, 0.3, 0);
+  mesh(SG.vest, SM.vest, 'body', torso, 0, 0.36, 0);
+  const head = new THREE.Group(); head.position.y = 0.72; torso.add(head);
+  mesh(SG.head, skin, 'head', head, 0, 0, 0);
+  mesh(SG.helmet, SM.helmet, 'head', head, 0, 0.12, -0.01);
+  mesh(SG.visor, SM.visor, null, head, 0, 0.03, 0.13);
+
+  const arms = [];
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Group(); arm.position.set(side * 0.3, 0.54, 0); torso.add(arm);
+    mesh(SG.arm, uniform, 'limb', arm, 0, -0.27, 0);
+    arms.push(arm);
+  }
+  const rifle = new THREE.Group(); rifle.position.set(0.1, 0.36, 0.32); torso.add(rifle);
+  mesh(SG.rifle, SM.rifle, null, rifle, 0, 0, 0);
+  const flash = new THREE.Mesh(SG.muzzle, SM.flash);
+  flash.position.z = 0.42; flash.visible = false; rifle.add(flash);
+
+  scene.add(group);
+  return { group, hips, torso, head, legs, arms, rifle, flash, uniform, skin, hitMeshes };
+}
+
+function spawnSoldier() {
+  // Find a free spot far from the player, preferably out of their sight
+  const pos = new THREE.Vector3();
+  const eye = playerEye(new THREE.Vector3());
+  for (let tries = 0; tries < 40; tries++) {
+    pos.set(rand(-S + 2, S - 2), 0, rand(-S + 2, S - 2));
+    if (!spotFree(pos.x, pos.z, 0.6)) continue;
+    if (Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z) < 22) continue;
+    if (tries < 30 && clearLine(eye, new THREE.Vector3(pos.x, 1.5, pos.z))) continue;  // hidden if possible
+    break;
+  }
+  const C = CONFIG.soldier, w = state.wave;
+  const speedMult = Math.min(C.maxSpeedMult, 1 + C.speedPerWave * (w - 1));
+  const s = {
+    ...buildSoldier(),
+    pos: pos.clone(), vel: new THREE.Vector3(), facing: rand(0, Math.PI * 2),
+    hp: C.health + C.healthPerWave * (w - 1), maxHp: C.health + C.healthPerWave * (w - 1),
+    runSpeed: C.runSpeed * speedMult * rand(0.9, 1.1), walkSpeed: C.walkSpeed * speedMult,
+    aimError: C.aimError / (1 + C.accuracyPerWave * (w - 1)),
+    damage: C.damage + C.damagePerWave * (w - 1),
+    role: Math.random() < C.flankerChance ? 'flanker' : 'rifleman',
+    state: 'patrol', stateT: 0, target: null, running: false,
+    aware: false, sees: false, lastKnown: new THREE.Vector3(), lastSeenT: 99, reactionT: 0,
+    ammo: C.magSize, reloadT: 0, burstLeft: 0, shotT: rand(0.5, 1),
+    cover: null, peekSide: 1, peekCount: 0, flanked: false, retreated: false, strafeDir: 1,
+    crouch: 0, wantCrouch: false, aiming: false, walkPhase: 0, stepPhase: 0,
+    flashT: 0, stagger: 0, dead: false, deathT: 0, stuckT: 0, lastPos: pos.clone(),
+  };
+  s.group.position.copy(pos);
+  for (const m of s.hitMeshes) m.userData.soldier = s;
+  soldiers.push(s);
+  spawnParticles(new THREE.Vector3(pos.x, 1, pos.z), 12, 0xb070ff, 4, 0.15, 0.6, 0.3);
+}
+
+function removeSoldier(s) {
+  scene.remove(s.group);
+  s.uniform.dispose(); s.skin.dispose();
+  soldiers.splice(soldiers.indexOf(s), 1);
+}
+
+const aliveSoldiers = () => soldiers.filter((s) => !s.dead);
+
+/** Player shot a soldier. part = 'head' | 'body' | 'limb'. */
+function damageSoldier(s, part, point) {
+  const W = CONFIG.weapon;
+  const mult = part === 'head' ? W.headshotMultiplier : part === 'limb' ? W.limbMultiplier : 1;
+  s.hp -= W.bodyDamage * mult;
+  s.flashT = 0.08;
+  s.stagger = 1;
+  spawnParticles(point, part === 'head' ? 14 : 8, 0x9e1b1b, 4, 0.08, 0.5);
+  spawnParticles(point, 4, 0xffe08a, 6, 0.05, 0.25);
+  // Being shot makes them aware of you immediately
+  alertSoldier(s, player.pos);
+  if (s.hp <= 0) {
+    killSoldier(s, part === 'head');
+    showHitmarker('kill');
+  } else {
+    showHitmarker(part === 'head' ? 'head' : 'hit');
+    if (part === 'head') Sound.headshot(); else Sound.hit();
+  }
+}
+
+function killSoldier(s, headshot) {
+  s.dead = true;
+  s.deathT = 0;
+  s.flash.visible = false;
+  s.fallDir = Math.random() < 0.5 ? 1 : -1;   // fall backward or to a side
+  const C = CONFIG.soldier;
+  state.score += (C.scorePerKill + (headshot ? C.headshotBonus : 0)) * state.wave;
+  if (headshot) Sound.headshot();
+  const a = soundAt(s.pos); Sound.enemyDeath(a.vol, a.pan);
+}
+
+/* ---------- Perception ---------- */
+const _eyeA = new THREE.Vector3(), _eyeB = new THREE.Vector3(), _tmp = new THREE.Vector3();
+function soldierEye(s, out) { return out.set(s.pos.x, lerp(1.65, 1.05, s.crouch), s.pos.z); }
+function playerEye(out) { return out.set(player.pos.x, player.pos.y + player.eye, player.pos.z); }
+
+/** Can the soldier see the player right now? (range + field of view + line of sight) */
+function canSee(s) {
+  soldierEye(s, _eyeA);
+  const dx = player.pos.x - s.pos.x, dz = player.pos.z - s.pos.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist > CONFIG.soldier.sightRange) return false;
+  if (!s.aware) {   // unaware soldiers only notice you inside their view cone
+    let ang = Math.atan2(dx, dz) - s.facing;
+    ang = Math.atan2(Math.sin(ang), Math.cos(ang));
+    if (Math.abs(ang) > (CONFIG.soldier.fovDegrees * Math.PI / 360)) return false;
+  }
+  if (clearLine(_eyeA, playerEye(_eyeB))) return true;
+  _eyeB.y = player.pos.y + player.height * 0.55;       // chest visible?
+  return clearLine(_eyeA, _eyeB);
+}
+
+/** Make a soldier aware of the player at a (possibly approximate) position. */
+function alertSoldier(s, where) {
+  s.lastKnown.copy(where);
+  if (!s.aware) {
+    s.aware = true;
+    s.reactionT = CONFIG.soldier.reactionTime;
+    if (s.state === 'patrol' || s.state === 'search') setState(s, 'decide');
+  }
+}
+
+/** A noise made by the player: soldiers inside `range` hear it. */
+function playerNoise(range) {
+  if (range <= 0) return;
+  for (const s of soldiers) {
+    if (s.dead) continue;
+    if (Math.hypot(s.pos.x - player.pos.x, s.pos.z - player.pos.z) < range) alertSoldier(s, player.pos);
+  }
+}
+
+/* ---------- Tactical helpers ---------- */
+function setState(s, st, t = 0) { s.state = st; s.stateT = t; }
+
+/**
+ * Pick a cover spot: the far side of a crate/wall from the player.
+ * preferFar = retreating (pick cover far from the player).
+ */
+function findCover(s, preferFar) {
+  let best = null, bestScore = Infinity;
+  const pe = playerEye(_eyeB);
+  for (const b of coverBoxes) {
+    const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+    let dx = cx - player.pos.x, dz = cz - player.pos.z;
+    const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
+    // distance from the box centre to its edge along that direction, plus body room
+    const ext = Math.abs(dx) * (b.max.x - b.min.x) / 2 + Math.abs(dz) * (b.max.z - b.min.z) / 2;
+    const px = cx + dx * (ext + 0.75), pz = cz + dz * (ext + 0.75);
+    if (!spotFree(px, pz, 0.45)) continue;
+    const dPlayer = Math.hypot(px - player.pos.x, pz - player.pos.z);
+    if (dPlayer < 6) continue;
+    // someone else already using it?
+    if (soldiers.some((o) => o !== s && !o.dead && o.cover && Math.hypot(o.cover.x - px, o.cover.z - pz) < 1.6)) continue;
+    // crouched there, would the player be hidden?
+    if (clearLine(_tmp.set(px, 0.9, pz), pe)) continue;
+    const dSelf = Math.hypot(px - s.pos.x, pz - s.pos.z);
+    const score = preferFar ? dSelf * 0.4 - dPlayer * 1.5 : dSelf + Math.abs(dPlayer - CONFIG.soldier.idealRange) * 0.6;
+    if (score < bestScore) { bestScore = score; best = { x: px, z: pz, box: b, nx: dx, nz: dz }; }
+  }
+  return best;
+}
+
+/** A random free floor point (for patrols). */
+function randomPoint(nearX = 0, nearZ = 0, radius = S - 3) {
+  for (let i = 0; i < 20; i++) {
+    const x = clamp(nearX + rand(-radius, radius), -S + 2, S - 2), z = clamp(nearZ + rand(-radius, radius), -S + 2, S - 2);
+    if (spotFree(x, z, 0.6)) return new THREE.Vector3(x, 0, z);
+  }
+  return new THREE.Vector3(0, 0, 20);
+}
+
+/**
+ * Simple path-finding around one box: pick the box corner (pushed out for body room)
+ * that makes the shortest trip from the soldier to the target.
+ */
+function detourAround(s, box, target) {
+  let best = null, bestLen = Infinity;
+  const m = 0.75;
+  for (const [x, z] of [[box.min.x - m, box.min.z - m], [box.max.x + m, box.min.z - m], [box.min.x - m, box.max.z + m], [box.max.x + m, box.max.z + m]]) {
+    if (!spotFree(x, z, 0.4)) continue;
+    const len = Math.hypot(x - s.pos.x, z - s.pos.z) + Math.hypot(target.x - x, target.z - z);
+    if (Math.hypot(x - s.pos.x, z - s.pos.z) < 0.5) continue;   // already at this corner
+    if (len < bestLen) { bestLen = len; best = new THREE.Vector3(x, 0, z); }
+  }
+  return best;
+}
+
+/* ---------- Shooting at the player ---------- */
+const _muz = new THREE.Vector3(), _dir = new THREE.Vector3(), _aim = new THREE.Vector3(), _end = new THREE.Vector3();
+function soldierFire(s) {
+  s.ammo--;
+  s.flash.visible = true; s.flashT2 = 0.05;
+  s.rifle.getWorldPosition(_muz);
+  _muz.y += 0.02;
+  // Aim at chest (sometimes head) with an error cone that grows when you move or they move
+  _aim.set(player.pos.x, player.pos.y + player.height * (Math.random() < 0.2 ? 0.92 : 0.6), player.pos.z);
+  const pSpeed = Math.hypot(player.vel.x, player.vel.z);
+  let err = s.aimError;
+  err *= 1 + pSpeed / CONFIG.player.walkSpeed * 0.6;        // moving targets are harder
+  if (player.crouching) err *= 0.85;
+  if (s.running) err *= 1.7;                               // shooting on the move is worse
+  if (s.lastSeenT > 0.3) err *= 1.6;                       // firing at where you were
+  _dir.subVectors(_aim, _muz).normalize();
+  // random direction inside the cone
+  const a = Math.random() * Math.PI * 2, r = err * Math.sqrt(Math.random());
+  const up = Math.abs(_dir.y) < 0.95 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+  const u = new THREE.Vector3().crossVectors(_dir, up).normalize();
+  const v = new THREE.Vector3().crossVectors(_dir, u);
+  _dir.addScaledVector(u, Math.cos(a) * Math.tan(r)).addScaledVector(v, Math.sin(a) * Math.tan(r)).normalize();
+
+  // Does the ray pass through the player's body (a vertical capsule)?
+  const range = 80;
+  const wallT = segmentBlockT(_muz.x, _muz.y, _muz.z, _muz.x + _dir.x * range, _muz.y + _dir.y * range, _muz.z + _dir.z * range) * range;
+  const ox = player.pos.x - _muz.x, oz = player.pos.z - _muz.z;
+  const horiz = Math.hypot(_dir.x, _dir.z) || 1e-6;
+  const tClosest = (ox * _dir.x + oz * _dir.z) / (horiz * horiz);   // closest approach in XZ
+  let hit = false;
+  if (tClosest > 0 && tClosest < wallT) {
+    const cx = _muz.x + _dir.x * tClosest, cz = _muz.z + _dir.z * tClosest, cy = _muz.y + _dir.y * tClosest;
+    const miss = Math.hypot(cx - player.pos.x, cz - player.pos.z);
+    if (miss < CONFIG.player.radius + 0.05 && cy > player.pos.y && cy < player.pos.y + player.height) hit = true;
+    else if (miss < 1.5 && cy > player.pos.y - 0.5 && cy < player.pos.y + player.height + 1) Sound.whiz();   // near miss
+  }
+  const len = hit ? tClosest : Math.min(wallT, range);
+  _end.copy(_muz).addScaledVector(_dir, len);
+  spawnTracer(_muz, _end);
+  if (!hit && wallT < range) spawnParticles(_end, 3, 0xd8d0c0, 2, 0.05, 0.3);
+  const snd = soundAt(s.pos); Sound.enemyShot(snd.vol, snd.pan);
+  if (hit) damagePlayer(s.damage, s.pos);
+}
+
+/* ---------- AI update (the "brain") ---------- */
+function updateSoldierAI(s, dt) {
+  const C = CONFIG.soldier;
+  const toPX = player.pos.x - s.pos.x, toPZ = player.pos.z - s.pos.z;
+  const distP = Math.hypot(toPX, toPZ) || 1;
+
+  // 1) Senses
+  s.sees = canSee(s);
+  if (s.sees) {
+    if (!s.aware) {           // first sighting: tell nearby squad mates
+      alertSoldier(s, player.pos);
+      for (const o of soldiers) if (o !== s && !o.dead && o.pos.distanceTo(s.pos) < 18) alertSoldier(o, player.pos);
+    }
+    s.lastKnown.copy(player.pos);
+    s.lastSeenT = 0;
+    if (s.state === 'search' || s.state === 'patrol') setState(s, 'decide');   // found you: pick a tactic
+  } else s.lastSeenT += dt;
+  s.reactionT -= dt;
+
+  // 2) Reloading (can happen in any state)
+  if (s.reloadT > 0) {
+    s.reloadT -= dt;
+    if (s.reloadT <= 0) s.ammo = C.magSize;
+  } else if (s.ammo <= 0) {
+    s.reloadT = C.reloadTime;
+    const a = soundAt(s.pos); Sound.enemyReload(a.vol, a.pan);
+    if (s.state === 'strafe' || s.state === 'peek') setState(s, 'decide');   // go reload behind cover
+  }
+
+  // 3) State machine
+  s.stateT -= dt;
+  s.target = null; s.running = false; s.wantCrouch = false;
+  let strafe = false;
+
+  switch (s.state) {
+    case 'patrol': {          // wander slowly until something is seen or heard
+      if (!s.patrolTo || s.pos.distanceTo(s.patrolTo) < 1 || s.stateT < -8) { s.patrolTo = randomPoint(s.pos.x, s.pos.z, 14); s.stateT = 0; }
+      s.target = s.patrolTo;
+      break;
+    }
+    case 'search': {          // aware of roughly where you are, but can't see you
+      s.target = s.lastKnown; s.running = true;
+      if (s.pos.distanceTo(s.lastKnown) < 2 || s.stateT <= 0) {
+        if (s.aware) { s.aware = false; s.lastSeenT = 99; }
+        setState(s, 'patrol');
+      }
+      break;
+    }
+    case 'decide': {          // choose the next tactic
+      if (!s.aware) { setState(s, 'patrol'); break; }
+      if (!s.retreated && s.hp < s.maxHp * C.retreatHealth) {
+        s.cover = findCover(s, true);
+        s.retreated = true;
+        if (s.cover) { setState(s, 'retreat', 8); break; }
+      }
+      if (s.role === 'flanker' && !s.flanked && distP > 8) {
+        // go around the player's side
+        const side = Math.random() < 0.5 ? 1 : -1;
+        const ang = Math.atan2(s.pos.x - player.pos.x, s.pos.z - player.pos.z) + side * rand(1.2, 1.6);
+        const fx = clamp(player.pos.x + Math.sin(ang) * 13, -S + 3, S - 3), fz = clamp(player.pos.z + Math.cos(ang) * 13, -S + 3, S - 3);
+        s.flankTo = spotFree(fx, fz, 0.6) ? new THREE.Vector3(fx, 0, fz) : randomPoint(fx, fz, 4);
+        s.flanked = true;
+        setState(s, 'flank', 7);
+        break;
+      }
+      s.cover = Math.random() < 0.8 ? findCover(s, false) : null;
+      if (s.cover) setState(s, 'toCover', 8);
+      else { s.strafeDir = Math.random() < 0.5 ? 1 : -1; setState(s, 'strafe', rand(2, 4)); }
+      break;
+    }
+    case 'retreat':
+    case 'toCover': {         // run to the chosen cover spot
+      if (!s.cover) { setState(s, 'decide'); break; }
+      s.target = _tmp.set(s.cover.x, 0, s.cover.z).clone(); s.running = true;
+      if (Math.hypot(s.pos.x - s.cover.x, s.pos.z - s.cover.z) < 0.5) {
+        s.peekCount = 0;
+        setState(s, 'inCover', s.state === 'retreat' ? rand(3, 5) : rand(0.8, 2));
+      } else if (s.stateT <= 0) setState(s, 'decide');
+      break;
+    }
+    case 'inCover': {         // crouch behind cover, reload, wait
+      s.wantCrouch = true;
+      if (s.ammo < C.magSize * 0.5 && s.reloadT <= 0) { s.ammo = 0; }   // tactical reload
+      if (s.stateT <= 0 && s.reloadT <= 0) {
+        if (s.lastSeenT > 8) { setState(s, 'search', 10); break; }
+        s.peekSide = Math.random() < 0.5 ? 1 : -1;
+        setState(s, 'peek', rand(1.6, 3));
+        s.peekMoved = false;
+      }
+      break;
+    }
+    case 'peek': {            // stand / lean out and shoot
+      if (!s.cover) { setState(s, 'decide'); break; }
+      // If standing up isn't enough to see you, step out sideways
+      if (!s.sees && s.stateT < 2.6 && !s.peekMoved) {
+        const px = s.cover.x - s.cover.nz * s.peekSide * 1.4, pz = s.cover.z + s.cover.nx * s.peekSide * 1.4;
+        s.peekTo = spotFree(px, pz, 0.45) ? new THREE.Vector3(px, 0, pz) : null;
+        s.peekMoved = true;
+      }
+      if (s.peekTo) s.target = s.peekTo;
+      if (s.stateT <= 0 || s.ammo <= 0) {
+        s.peekTo = null;
+        s.peekCount++;
+        if (s.peekCount >= 2 + Math.floor(Math.random() * 2) || distP < 5) setState(s, 'decide');   // relocate
+        else setState(s, 'toCoverBack', 3);
+      }
+      break;
+    }
+    case 'toCoverBack': {     // duck back behind the same cover
+      s.target = _tmp.set(s.cover.x, 0, s.cover.z).clone();
+      if (Math.hypot(s.pos.x - s.cover.x, s.pos.z - s.cover.z) < 0.5 || s.stateT <= 0) setState(s, 'inCover', rand(0.8, 2));
+      break;
+    }
+    case 'strafe': {          // fight in the open: side-step while shooting, keep range
+      strafe = true;
+      if (s.stateT <= 0) setState(s, 'decide');
+      break;
+    }
+    case 'flank': {
+      s.target = s.flankTo; s.running = true;
+      if (s.pos.distanceTo(s.flankTo) < 1.2 || s.stateT <= 0) setState(s, 'decide');
+      break;
+    }
+  }
+
+  // Lost track of you for a long time while in the open: go search
+  if (s.aware && s.lastSeenT > 10 && (s.state === 'strafe' || s.state === 'flank')) setState(s, 'search', 12);
+
+  // 4) Movement
+  let mvx = 0, mvz = 0, speed = 0;
+  if (strafe) {
+    // perpendicular to the player, plus closing/opening distance
+    if (Math.random() < dt * 0.7) s.strafeDir *= -1;
+    const nx = toPX / distP, nz = toPZ / distP;
+    const radial = distP > C.idealRange + 4 ? 0.8 : distP < C.idealRange - 6 ? -0.8 : 0;
+    mvx = -nz * s.strafeDir + nx * radial; mvz = nx * s.strafeDir + nz * radial;
+    const l = Math.hypot(mvx, mvz) || 1; mvx /= l; mvz /= l;
+    speed = s.walkSpeed * 1.3;
+  } else if (s.target) {
+    // Follow a detour around a blocking box if we have one
+    if (s.detour) {
+      s.detourT -= dt;
+      if (s.detourT <= 0 || Math.hypot(s.detour.x - s.pos.x, s.detour.z - s.pos.z) < 0.4) s.detour = null;
+    }
+    const goal = s.detour || s.target;
+    const dx = goal.x - s.pos.x, dz = goal.z - s.pos.z, d = Math.hypot(dx, dz);
+    if (d > 0.15) { mvx = dx / d; mvz = dz / d; speed = (s.running ? s.runSpeed : s.walkSpeed) * Math.min(1, d * 2); }
+  }
+  if (s.crouch > 0.5) speed *= 0.5;
+  // keep apart from other soldiers
+  for (const o of soldiers) {
+    if (o === s || o.dead) continue;
+    const dx = s.pos.x - o.pos.x, dz = s.pos.z - o.pos.z, d2 = dx * dx + dz * dz;
+    if (d2 < 1.4 && d2 > 1e-6) { const d = Math.sqrt(d2); mvx += dx / d * 0.8; mvz += dz / d * 0.8; speed = Math.max(speed, 1.5); }
+  }
+  const ml = Math.hypot(mvx, mvz);
+  if (ml > 1) { mvx /= ml; mvz /= ml; }
+  s.vel.x = lerp(s.vel.x, mvx * speed, Math.min(1, dt * 8));
+  s.vel.z = lerp(s.vel.z, mvz * speed, Math.min(1, dt * 8));
+  s.pos.x += s.vel.x * dt; s.pos.z += s.vel.z * dt;
+  const bumped = collideCircle(s.pos, 0.4, 0, 1.8);
+  if (bumped && bumped.cover !== false && s.target && !s.detour && !strafe) {
+    s.detour = detourAround(s, bumped, s.target);
+    s.detourT = 3;
+  }
+  // don't walk into the player
+  const pdx = s.pos.x - player.pos.x, pdz = s.pos.z - player.pos.z, pd = Math.hypot(pdx, pdz);
+  if (pd < 0.85 && pd > 1e-4 && player.pos.y < 1.5) { s.pos.x = player.pos.x + pdx / pd * 0.85; s.pos.z = player.pos.z + pdz / pd * 0.85; }
+
+  // Stuck detection: if trying to move but not getting anywhere, re-plan
+  s.stuckT += dt;
+  if (s.stuckT > 1.2) {
+    if (speed > 1 && s.pos.distanceTo(s.lastPos) < 0.4) {
+      s.detour = null;
+      if (s.state === 'patrol') s.patrolTo = null; else setState(s, s.aware ? 'decide' : 'patrol');
+      if (s.state === 'decide') { s.cover = null; s.strafeDir = Math.random() < 0.5 ? 1 : -1; setState(s, 'strafe', 1.5); }
+    }
+    s.stuckT = 0; s.lastPos.copy(s.pos);
+  }
+
+  // 5) Facing: look at the player in combat, otherwise where we're walking
+  s.aiming = s.aware && (s.sees || s.lastSeenT < 2 || s.state === 'peek' || s.state === 'strafe');
+  let want = s.facing;
+  if (s.aiming) want = Math.atan2(s.lastKnown.x - s.pos.x, s.lastKnown.z - s.pos.z);
+  else if (Math.hypot(s.vel.x, s.vel.z) > 0.3) want = Math.atan2(s.vel.x, s.vel.z);
+  let diff = Math.atan2(Math.sin(want - s.facing), Math.cos(want - s.facing));
+  s.facing += clamp(diff, -8 * dt, 8 * dt);
+
+  // 6) Trigger: bursts while they can see you and are facing you
+  s.shotT -= dt;
+  const facingOK = Math.abs(diff) < 0.25;
+  const canShootState = s.state !== 'inCover' && s.state !== 'retreat' && s.state !== 'patrol';
+  if (s.sees && distP < C.fireRange && s.reactionT <= 0 && s.reloadT <= 0 && s.ammo > 0 && facingOK && canShootState && s.crouch < 0.4 && s.shotT <= 0
+      && clearLine(s.rifle.getWorldPosition(_muz), _aim.set(player.pos.x, player.pos.y + player.height * 0.6, player.pos.z))) {   // don't waste bullets into a crate
+    if (s.burstLeft <= 0) s.burstLeft = Math.floor(rand(C.burstMin, C.burstMax + 1));
+    soldierFire(s);
+    s.burstLeft--;
+    s.shotT = s.burstLeft > 0 ? C.fireInterval : rand(C.burstPauseMin, C.burstPauseMax);
+  }
+
+  // Soldier footsteps you can hear
+  if (Math.hypot(s.vel.x, s.vel.z) > 2.5) {
+    s.stepPhase += dt * Math.hypot(s.vel.x, s.vel.z) * 0.8;
+    if (s.stepPhase > 1) { s.stepPhase = 0; const a = soundAt(s.pos); if (a.vol > 0.12) Sound.enemyStep(a.vol, a.pan); }
+  }
+}
+
+/* ---------- Animation: walking, running, crouching, aiming, dying ---------- */
+function animateSoldier(s, dt) {
+  const g = s.group;
+  g.position.set(s.pos.x, 0, s.pos.z);
+  g.rotation.y = s.facing;
+
+  if (s.dead) {
+    // Death: knees buckle, then the whole body tips over backwards/sideways
+    s.deathT += dt;
+    const t = Math.min(1, s.deathT / 0.7);
+    const e = 1 - (1 - t) * (1 - t);   // ease-out
+    s.hips.position.y = lerp(0.95, 0.75, e);
+    g.rotation.x = -e * Math.PI / 2 * 0.95;
+    g.rotation.z = s.fallDir * e * 0.25;
+    g.position.y = e * 0.15;
+    s.arms.forEach((a, i) => { a.rotation.x = lerp(a.rotation.x, 0.2, Math.min(1, dt * 5)); a.rotation.z = lerp(a.rotation.z, (i ? 1 : -1) * 1.3, Math.min(1, dt * 5)); });
+    s.rifle.rotation.x = lerp(s.rifle.rotation.x, 1.4, Math.min(1, dt * 4));   // rifle drops
+    s.head.rotation.x = -e * 0.5;
+    if (s.deathT > 4) g.position.y -= (s.deathT - 4) * 0.4;   // sink into the floor
+    return;
+  }
+
+  // Crouch amount moves smoothly toward the wanted pose
+  s.crouch = lerp(s.crouch, s.wantCrouch ? 1 : 0, Math.min(1, dt * 7));
+  const speed = Math.hypot(s.vel.x, s.vel.z);
+  s.walkPhase += dt * speed * 2.6;
+  const amp = Math.min(1, speed / 4.5);
+  const run = Math.min(1, Math.max(0, (speed - 2.5) / 2));
+
+  // Legs: swing thighs, bend knees on the back swing
+  const crouchBend = s.crouch;
+  s.legs.forEach((leg, i) => {
+    const ph = s.walkPhase + i * Math.PI;
+    const swing = Math.sin(ph) * amp * (0.6 + 0.4 * run);
+    const kneeBend = Math.max(0, Math.sin(ph - 1.3)) * amp * (0.9 + 0.6 * run);
+    leg.thigh.rotation.x = lerp(-swing, -1.25 - swing * 0.2, crouchBend);
+    leg.knee.rotation.x = lerp(kneeBend, 1.95, crouchBend);
+  });
+  s.hips.position.y = lerp(0.95 + Math.abs(Math.sin(s.walkPhase)) * 0.04 * amp, 0.55, crouchBend);
+
+  // Upper body: lean into a run, stagger back when hit
+  s.stagger = Math.max(0, s.stagger - dt * 6);
+  s.torso.rotation.x = run * 0.2 * (s.aiming ? 0.3 : 1) - s.stagger * 0.3 + crouchBend * 0.15;
+
+  // Arms: rifle up and pointing forward when aiming, otherwise swing while walking
+  const armSwing = Math.sin(s.walkPhase) * amp * 0.7;
+  const aimT = s.aiming ? 1 : 0;
+  s.aimBlend = lerp(s.aimBlend || 0, aimT, Math.min(1, dt * 8));
+  const ab = s.aimBlend;
+  s.arms[1].rotation.x = lerp(armSwing * 0.4 - 0.5, -1.45, ab);     // right arm holds the grip
+  s.arms[1].rotation.z = lerp(0, -0.2, ab);
+  s.arms[0].rotation.x = lerp(-armSwing, -1.35, ab);                // left arm supports the barrel
+  s.arms[0].rotation.z = lerp(0, 0.5, ab);
+  s.rifle.rotation.x = lerp(0.9, -s.torso.rotation.x, ab);          // rifle lowered vs. level
+  s.rifle.position.set(0.1, lerp(0.15, 0.4, ab), lerp(0.2, 0.34, ab));
+
+  // Hit flash + muzzle flash timers
+  if (s.flashT > 0) {
+    s.flashT -= dt;
+    const on = s.flashT > 0 ? 0xffffff : 0x000000;
+    s.uniform.emissive.setHex(on); s.skin.emissive.setHex(on);
+  }
+  if (s.flash.visible && (s.flashT2 -= dt) <= 0) s.flash.visible = false;
+}
+
+function updateSoldiers(dt) {
+  for (let i = soldiers.length - 1; i >= 0; i--) {
+    const s = soldiers[i];
+    if (!s.dead) updateSoldierAI(s, dt);
+    if (state.mode !== 'playing') return;      // player died this frame
+    animateSoldier(s, dt);
+    if (s.dead && s.deathT > 6) removeSoldier(s);
+  }
+}
+
+/* =====================================================================
+   Player
+   ===================================================================== */
+const player = {
+  pos: new THREE.Vector3(), vel: new THREE.Vector3(),
+  yaw: 0, pitch: 0, onGround: true,
+  health: CONFIG.player.maxHealth,
+  bobTime: 0, stepPhase: 0,
+  crouching: false, height: CONFIG.player.height, eye: CONFIG.player.eyeHeight,
+  ads: 0,   // 0 = hip, 1 = fully aimed down sights
+};
+
+function damagePlayer(amount, fromPos) {
+  player.health = Math.max(0, player.health - amount);
+  state.damageFlash = 1;
+  Sound.hurt();
+  if (fromPos) showDamageArrow(fromPos);
+  if (player.health <= 0) gameOver();
+}
+
+function updatePlayer(dt) {
+  const P = CONFIG.player, p = player;
+
+  // Crouch (hold C): shorter, slower, quieter, more accurate
+  p.crouching = !!keys.KeyC && p.onGround || (p.crouching && !p.onGround && !!keys.KeyC);
+  const targetH = p.crouching ? P.crouchHeight : P.height;
+  const targetEye = p.crouching ? P.crouchEyeHeight : P.eyeHeight;
+  p.height = lerp(p.height, targetH, Math.min(1, dt * 12));
+  p.eye = lerp(p.eye, targetEye, Math.min(1, dt * 12));
+
+  let fx = 0, fz = 0;
+  if (keys.KeyW) fz -= 1;
+  if (keys.KeyS) fz += 1;
+  if (keys.KeyA) fx -= 1;
+  if (keys.KeyD) fx += 1;
+  const len = Math.hypot(fx, fz);
+  if (len > 0) { fx /= len; fz /= len; }
+  const sprinting = (keys.ShiftLeft || keys.ShiftRight) && len > 0 && fz < 0 && !p.crouching && !mouseRight;
+  let speed = p.crouching ? P.crouchSpeed : sprinting ? P.sprintSpeed : P.walkSpeed;
+  if (p.ads > 0.5) speed *= 0.65;
+  const sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
+  const wishX = (fx * cos + fz * sin) * speed;
+  const wishZ = (-fx * sin + fz * cos) * speed;
+
+  const k = Math.min(1, (p.onGround ? 14 : 4) * dt);   // less control in the air
+  p.vel.x += (wishX - p.vel.x) * k;
+  p.vel.z += (wishZ - p.vel.z) * k;
+
+  p.pos.x += p.vel.x * dt;
+  p.pos.z += p.vel.z * dt;
+  collideCircle(p.pos, P.radius, p.pos.y, p.pos.y + p.height);
+
+  if (keys.Space && p.onGround && !p.crouching) { p.vel.y = P.jumpSpeed; p.onGround = false; Sound.jump(); }
+  p.vel.y -= P.gravity * dt;
+  const oldY = p.pos.y;
+  p.pos.y += p.vel.y * dt;
+  const wasOnGround = p.onGround;
+  p.onGround = false;
+  if (p.pos.y <= 0) { p.pos.y = 0; p.vel.y = 0; p.onGround = true; }
+  for (const b of obstacles) {   // land on top of boxes
+    if (oldY >= b.max.y - 0.06 && p.pos.y < b.max.y && overlapsXZ(p.pos, P.radius * 0.85, b)) { p.pos.y = b.max.y; p.vel.y = 0; p.onGround = true; }
+  }
+  if (p.onGround && !wasOnGround) Sound.footstep(0.35);   // landing thud
+
+  // Footsteps: sound for you, and noise opponents can hear
+  const hSpeed = Math.hypot(p.vel.x, p.vel.z);
+  const moving = p.onGround && hSpeed > 0.8;
+  if (moving) {
+    p.bobTime += dt * (sprinting ? 13 : p.crouching ? 7 : 10);
+    p.stepPhase += dt * hSpeed * 0.55;
+    if (p.stepPhase >= 1) {
+      p.stepPhase = 0;
+      Sound.footstep(p.crouching ? 0.08 : sprinting ? 0.3 : 0.18);
+      const C = CONFIG.soldier;
+      playerNoise(p.crouching ? 0 : sprinting ? C.hearSprintRange : C.hearWalkRange);
+    }
+  }
+  const bob = moving ? Math.sin(p.bobTime) * (0.045 * (1 - p.ads * 0.8)) : 0;
+  camera.position.set(p.pos.x, p.pos.y + p.eye + bob, p.pos.z);
+  camera.rotation.set(p.pitch, p.yaw, 0);
+
+  return { moving, sprinting, hSpeed };
+}
+
+/* =====================================================================
+   Shooting, spread, recoil, aim down sights, reload
+   ===================================================================== */
+const raycaster = new THREE.Raycaster();
+const weapon = { ammo: CONFIG.weapon.magSize, cooldown: 0, reloading: false, reloadTimer: 0, recoil: 0, flashTimer: 0, bloom: 0, spread: 0 };
+
+/** Current spread (radians), from movement, air, recent shots, crouch and ADS. */
+function computeSpread(moveInfo) {
+  const W = CONFIG.weapon;
+  let s = W.baseSpread + W.moveSpread * Math.min(1.5, moveInfo.hSpeed / CONFIG.player.walkSpeed) + weapon.bloom;
+  if (!player.onGround) s += W.airSpread;
+  if (player.crouching) s *= W.crouchSpreadMult;
+  s *= lerp(1, W.adsSpreadMult, player.ads);
+  return s;
+}
+
+function shootTargets() {
+  const list = solidMeshes.slice();
+  for (const s of soldiers) if (!s.dead) list.push(...s.hitMeshes);
+  return list;
+}
+
+const _shotDir = new THREE.Vector3();
+function shoot() {
+  if (weapon.reloading || weapon.cooldown > 0) return;
+  if (weapon.ammo <= 0) { Sound.empty(); weapon.cooldown = 0.25; startReload(); return; }
+
+  weapon.ammo--;
+  weapon.cooldown = 1 / CONFIG.weapon.fireRate;
+  weapon.recoil = 1;
+  weapon.flashTimer = 0.05;
+  const kick = CONFIG.weapon.recoilKick * lerp(1, 0.5, player.ads) * (player.crouching ? 0.7 : 1);
+  player.pitch = Math.min(Math.PI / 2 - 0.01, player.pitch + kick);
+  player.yaw += (Math.random() - 0.5) * kick * 0.6;
+  muzzleFlash.rotation.z = Math.random() * Math.PI;
+  muzzleFlash.scale.setScalar(0.8 + Math.random() * 0.5);
+  Sound.shoot();
+  playerNoise(CONFIG.soldier.hearShotRange);     // gunshots are loud
+
+  // Bullet direction: centre of the screen plus a random offset inside the spread cone
+  camera.updateMatrixWorld();
+  const a = Math.random() * Math.PI * 2, r = weapon.spread * Math.sqrt(Math.random());
+  _shotDir.set(Math.tan(r) * Math.cos(a), Math.tan(r) * Math.sin(a), -1).normalize().applyQuaternion(camera.quaternion);
+  raycaster.set(camera.position, _shotDir);
+  raycaster.far = CONFIG.weapon.range;
+  weapon.bloom = Math.min(CONFIG.weapon.maxBloom, weapon.bloom + CONFIG.weapon.bloomPerShot);
+
+  const hits = raycaster.intersectObjects(shootTargets(), false);
+  if (hits.length) {
+    const hit = hits[0];
+    const s = hit.object.userData.soldier;
+    if (s && !s.dead) damageSoldier(s, hit.object.userData.part, hit.point);
+    else {
+      const n = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0, 1, 0);
+      spawnParticles(hit.point.clone().addScaledVector(n, 0.05), 5, 0xd8d0c0, 2.5, 0.06, 0.4);
+    }
+  }
+  if (weapon.ammo === 0) startReload();
+}
+
+function startReload() {
+  if (weapon.reloading || weapon.ammo === CONFIG.weapon.magSize) return;
+  weapon.reloading = true;
+  weapon.reloadTimer = CONFIG.weapon.reloadTime;
+  Sound.reload();
+}
+
+const _fwd = new THREE.Vector3();
+function updateWeapon(dt, moveInfo) {
+  const W = CONFIG.weapon;
+  weapon.cooldown -= dt;
+  if (mouseDown) shoot();
+
+  if (weapon.reloading) {
+    weapon.reloadTimer -= dt;
+    if (weapon.reloadTimer <= 0) { weapon.reloading = false; weapon.ammo = W.magSize; }
+  }
+
+  // Aim down sights: zoom the camera, slide the gun to the centre
+  const wantAds = mouseRight && !weapon.reloading && !moveInfo.sprinting ? 1 : 0;
+  player.ads = lerp(player.ads, wantAds, Math.min(1, dt * 12));
+  const fov = lerp(W.hipFov, W.adsFov, player.ads);
+  if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+
+  weapon.bloom = Math.max(0, weapon.bloom - dt * (weapon.bloom * 5 + 0.01));
+  weapon.spread = computeSpread(moveInfo);
+  weapon.recoil = Math.max(0, weapon.recoil - dt * 9);
+
+  const r = weapon.reloading ? Math.sin((1 - weapon.reloadTimer / W.reloadTime) * Math.PI) : 0;
+  const sway = moveInfo.moving ? player.bobTime : 0;
+  const swayAmt = 1 - player.ads * 0.85;
+  _tmp.lerpVectors(GUN_HIP, GUN_ADS, player.ads);
+  gun.position.set(
+    _tmp.x + Math.cos(sway * 0.5) * 0.012 * swayAmt,
+    _tmp.y - Math.abs(Math.sin(sway * 0.5)) * 0.008 * swayAmt - r * 0.1 - (moveInfo.sprinting ? 0.03 : 0),
+    _tmp.z + weapon.recoil * lerp(0.045, 0.02, player.ads)
+  );
+  gun.rotation.set(weapon.recoil * lerp(0.18, 0.05, player.ads) - r * 0.7, moveInfo.sprinting ? 0.25 : 0, r * 0.4);
+
+  weapon.flashTimer -= dt;
+  const flashing = weapon.flashTimer > 0;
+  muzzleFlash.visible = flashing;
+  camera.getWorldDirection(_fwd);
+  muzzleLight.position.copy(camera.position).addScaledVector(_fwd, 0.8);
+  muzzleLight.intensity = flashing ? 25 : 0;
+}
+
+/* =====================================================================
+   Waves
+   ===================================================================== */
+const state = {
+  mode: 'menu',           // 'menu' | 'playing' | 'paused' | 'over'
+  score: 0, wave: 0, toSpawn: 0, spawnTimer: 0, intermission: 0, waveTime: 0, huntTimer: 0,
+  damageFlash: 0, bannerTimer: 0,
+};
+
+function startWave(n) {
+  const W = CONFIG.waves;
+  state.wave = n;
+  state.toSpawn = W.baseCount + (n - 1) * W.extraPerWave;
+  state.spawnTimer = 0.3;
+  state.waveTime = 0; state.huntTimer = W.huntAfter;
+  showBanner(`WAVE ${n}`);
+  Sound.wave();
+}
+
+function updateWaves(dt) {
+  if (state.intermission > 0) {
+    state.intermission -= dt;
+    if (state.intermission <= 0) startWave(state.wave + 1);
+    return;
+  }
+  state.waveTime += dt;
+  const alive = aliveSoldiers().length;
+  if (state.toSpawn > 0) {
+    state.spawnTimer -= dt;
+    if (state.spawnTimer <= 0 && alive < CONFIG.waves.maxAlive) {
+      spawnSoldier();
+      state.toSpawn--;
+      state.spawnTimer = CONFIG.waves.spawnInterval;
+    }
+  } else if (alive === 0) {
+    state.score += CONFIG.waves.clearBonusPerWave * state.wave;
+    player.health = Math.min(CONFIG.player.maxHealth, player.health + CONFIG.waves.healOnClear);
+    state.intermission = CONFIG.waves.timeBetweenWaves;
+    showBanner('WAVE CLEARED');
+  }
+  // Keep the pressure on: every so often, soldiers who haven't found you search near you
+  state.huntTimer -= dt;
+  if (state.huntTimer <= 0) {
+    state.huntTimer = CONFIG.waves.huntAfter;
+    for (const s of soldiers) {
+      if (s.dead || s.aware) continue;
+      s.lastKnown.set(player.pos.x + rand(-8, 8), 0, player.pos.z + rand(-8, 8));
+      setState(s, 'search', 15);
+    }
+  }
+}
+
+/* =====================================================================
+   HUD
+   ===================================================================== */
+let hitTimer = 0;
+function showHitmarker(kind) {
+  ui.hitmarker.className = 'show' + (kind === 'head' ? ' head' : kind === 'kill' ? ' kill' : '');
+  hitTimer = kind === 'kill' ? 0.18 : 0.09;
+}
+function showBanner(text) { ui.banner.textContent = text; ui.banner.classList.add('show'); state.bannerTimer = 1.8; }
+
+/** Point an arrow from the screen centre toward whoever shot us. */
+let arrowCursor = 0;
+function showDamageArrow(from) {
+  const a = ui.arrows[arrowCursor];
+  arrowCursor = (arrowCursor + 1) % ui.arrows.length;
+  a.from = from.clone();
+  a.life = 1.6;
+}
+
+const hudCache = {};
+function setText(el, key, value) { if (hudCache[key] !== value) { hudCache[key] = value; el.innerHTML = value; } }
+
+function updateHUD(dt) {
+  const frac = player.health / CONFIG.player.maxHealth;
+  setText(ui.healthText, 'hp', String(Math.ceil(player.health)));
+  ui.healthFill.style.width = (frac * 100).toFixed(1) + '%';
+  ui.healthFill.style.background = frac > 0.5 ? '#3ddc6a' : frac > 0.25 ? '#ffc23d' : '#ff4a3d';
+  setText(ui.ammo, 'ammo', `${weapon.ammo}<small> / ${CONFIG.weapon.magSize}</small>`);
+  setText(ui.reloadText, 'reload', weapon.reloading ? 'RELOADING…' : weapon.ammo === 0 ? 'PRESS R' : weapon.ammo <= 5 ? 'LOW AMMO' : '');
+  setText(ui.score, 'score', String(state.score));
+  setText(ui.wave, 'wave', String(state.wave));
+  setText(ui.enemiesLeft, 'left', `${aliveSoldiers().length + state.toSpawn} opponents remaining`);
+  setText(ui.stance, 'stance', player.crouching ? 'CROUCHING' : '');
+
+  // Crosshair gap follows the bullet spread (converted to pixels)
+  const halfFov = THREE.MathUtils.degToRad(camera.fov / 2);
+  const gapPx = 4 + Math.tan(weapon.spread) / Math.tan(halfFov) * (window.innerHeight / 2);
+  ui.crosshair.style.setProperty('--gap', gapPx.toFixed(1) + 'px');
+  ui.crosshair.classList.toggle('ads', player.ads > 0.6);
+
+  // Red crosshair when the centre of the screen is over an opponent
+  raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+  raycaster.far = CONFIG.weapon.range;
+  const h = raycaster.intersectObjects(shootTargets(), false)[0];
+  ui.crosshair.classList.toggle('enemy', !!(h && h.object.userData.soldier && !h.object.userData.soldier.dead));
+
+  // Damage arrows
+  for (const a of ui.arrows) {
+    if (a.life <= 0) continue;
+    a.life -= dt;
+    const world = Math.atan2(a.from.x - player.pos.x, a.from.z - player.pos.z);
+    const forward = player.yaw + Math.PI;
+    a.el.style.transform = `rotate(${forward - world}rad)`;
+    a.el.style.opacity = Math.max(0, Math.min(1, a.life)).toFixed(2);
+  }
+
+  state.damageFlash = Math.max(0, state.damageFlash - dt * 2.5);
+  ui.damage.style.opacity = (state.damageFlash * 0.8).toFixed(2);
+  if (hitTimer > 0 && (hitTimer -= dt) <= 0) ui.hitmarker.classList.remove('show');
+  if (state.bannerTimer > 0 && (state.bannerTimer -= dt) <= 0) ui.banner.classList.remove('show');
+}
+
+/* =====================================================================
+   Input
+   ===================================================================== */
+const keys = {};
+let mouseDown = false, mouseRight = false;
+const canvas = renderer.domElement;
+
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'KeyR' && state.mode === 'playing') startReload();
+  if (e.code === 'KeyH' && !e.repeat) ui.controls.classList.toggle('hidden');
+  if (e.code === 'Space') e.preventDefault();
+});
+document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouseDown = mouseRight = false; });
+
+document.addEventListener('mousedown', (e) => {
+  if (state.mode !== 'playing') return;
+  if (e.button === 0) { mouseDown = true; shoot(); }
+  if (e.button === 2) mouseRight = true;
+});
+document.addEventListener('mouseup', (e) => {
+  if (e.button === 0) mouseDown = false;
+  if (e.button === 2) mouseRight = false;
+});
+document.addEventListener('contextmenu', (e) => e.preventDefault());   // right click = aim, not a menu
+
+document.addEventListener('mousemove', (e) => {
+  if (state.mode !== 'playing' || document.pointerLockElement !== canvas) return;
+  // Some browsers report a huge jump right after pointer lock starts; ignore those spikes
+  if (Math.abs(e.movementX) > 250 || Math.abs(e.movementY) > 250) return;
+  const sens = CONFIG.player.mouseSensitivity * (camera.fov / CONFIG.weapon.hipFov);   // slower when zoomed
+  player.yaw -= e.movementX * sens;
+  player.pitch = clamp(player.pitch - e.movementY * sens, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+});
+
+function lockPointer() {
+  try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) { /* game still runs */ }
+}
+
+// Losing pointer lock (Esc) pauses the game
+let hadLock = false;
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === canvas) { hadLock = true; return; }
+  if (state.mode === 'playing' && hadLock) {
+    state.mode = 'paused';
+    mouseDown = mouseRight = false;
+    ui.pause.classList.remove('hidden');
+  }
+});
+
+/* =====================================================================
+   Game flow: start, pause, game over, restart
+   ===================================================================== */
+function resetGame() {
+  while (soldiers.length) removeSoldier(soldiers[0]);
+  for (const p of particles) { p.life = 0; p.mesh.visible = false; }
+  for (const a of ui.arrows) { a.life = 0; a.el.style.opacity = 0; }
+  player.pos.set(5, 0, 16);
+  player.vel.set(0, 0, 0);
+  player.yaw = 0; player.pitch = 0; player.ads = 0;
+  player.health = CONFIG.player.maxHealth;
+  weapon.ammo = CONFIG.weapon.magSize;
+  weapon.reloading = false; weapon.cooldown = 0; weapon.recoil = 0; weapon.bloom = 0;
+  state.score = 0; state.wave = 0; state.toSpawn = 0;
+  state.intermission = 1.5;     // short breather, then wave 1
+  state.damageFlash = 0;
+}
+
+function beginPlaying() {
+  Sound.init();
+  state.mode = 'playing';
+  ui.start.classList.add('hidden');
+  ui.over.classList.add('hidden');
+  ui.pause.classList.add('hidden');
+  ui.hud.classList.remove('hidden');
+  clock.getDelta();             // don't count menu time as a frame
+  lockPointer();
+}
+
+function gameOver() {
+  state.mode = 'over';
+  updateHUD(0);
+  mouseDown = mouseRight = false;
+  hadLock = false;
+  if (document.pointerLockElement) document.exitPointerLock();
+  ui.finalScore.textContent = state.score;
+  ui.finalWave.textContent = `You reached wave ${state.wave}`;
+  ui.over.classList.remove('hidden');
+}
+
+$('start-btn').addEventListener('click', () => { resetGame(); beginPlaying(); });
+$('restart-btn').addEventListener('click', () => { resetGame(); beginPlaying(); });
+$('resume-btn').addEventListener('click', () => beginPlaying());
+
+window.addEventListener('resize', () => {
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = gunCamera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  gunCamera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+});
+
+/* =====================================================================
+   Main loop
+   ===================================================================== */
+const clock = new THREE.Clock();
+let fpsFrames = 0, fpsTime = 0;
+resetGame();
+camera.position.set(5, CONFIG.player.eyeHeight, 16);
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.05);   // clamp so a lag spike can't tunnel through walls
+
+  if (state.mode === 'playing') {
+    const moveInfo = updatePlayer(dt);
+    updateWeapon(dt, moveInfo);
+    updateWaves(dt);
+    updateSoldiers(dt);
+    if (state.mode === 'playing') updateHUD(dt);
+  }
+  updateParticles(dt);
+  updateTracers(dt);
+
+  fpsFrames++; fpsTime += dt;
+  if (fpsTime >= 0.5) { ui.fps.textContent = `${Math.round(fpsFrames / fpsTime)} FPS`; fpsFrames = 0; fpsTime = 0; }
+
+  renderer.clear();
+  renderer.render(scene, camera);
+  renderer.clearDepth();
+  renderer.render(gunScene, gunCamera);
+}
+frame();
+
+// Handy for debugging in the browser console, e.g. __game.CONFIG.soldier.aimError = 0.1
+window.__game = { CONFIG, state, player, soldiers, weapon, spawnSoldier, damagePlayer, damageSoldier, soldierFire, canSee, findCover };
+</script>
+</body>
+</html>
