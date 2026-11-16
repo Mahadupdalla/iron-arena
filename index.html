@@ -258,7 +258,7 @@
       <span><kbd>Esc</kbd></span><span>Pause</span>
     </div>
     <div class="controls touch-only">
-      <span><kbd>&#9650; &#9660;</kbd></span><span>Walk forward / back</span>
+      <span><kbd>&#9650; &#9660;</kbd></span><span>Run forward / walk back</span>
       <span><kbd>&#9664; &#9654;</kbd></span><span>Turn left / right</span>
       <span><kbd>Right thumb</kbd></span><span>Drag anywhere to look</span>
       <span><kbd>SHOOT</kbd></span><span>Hold to shoot, drag it to aim while firing</span>
@@ -284,6 +284,8 @@
 <div id="settings-screen" class="screen hidden">
   <div class="card">
     <h1>SETTINGS</h1>
+    <div class="srow"><label>MOVE SPEED</label><input id="s-speed" type="range" min="0.7" max="2" step="0.05"><output id="o-speed"></output></div>
+    <div class="srow touch-only"><label>AUTO-RUN (HOLD &#9650;)</label><div class="seg" id="g-autorun"><button data-v="on">ON</button><button data-v="off">OFF</button></div></div>
     <div class="srow touch-only"><label>BUTTON SIZE</label><input id="s-bs" type="range" min="0.75" max="1.4" step="0.05"><output id="o-bs"></output></div>
     <div class="srow touch-only"><label>ARROW SPACING</label><input id="s-gap" type="range" min="0" max="44" step="2"><output id="o-gap"></output></div>
     <div class="srow touch-only"><label>ARROW SIZE</label><input id="s-as" type="range" min="44" max="84" step="2"><output id="o-as"></output></div>
@@ -1706,8 +1708,9 @@ function updatePlayer(dt) {
     len = Math.hypot(fx, fz);
     if (len > 0) { fx /= len; fz /= len; len = 1; }
   }
-  const sprinting = (keys.ShiftLeft || keys.ShiftRight || touch.sprint) && len > 0 && fz <= 0 && !p.crouching && !mouseRight;
-  let speed = p.crouching ? P.crouchSpeed : sprinting ? P.sprintSpeed : P.walkSpeed;
+  const autoRun = IS_TOUCH && settings.autorun && touch.moving && touch.mz < 0;   // holding the up arrow runs
+  const sprinting = (((keys.ShiftLeft || keys.ShiftRight) && !mouseRight) || touch.sprint || autoRun) && len > 0 && fz <= 0 && !p.crouching;
+  let speed = (p.crouching ? P.crouchSpeed : sprinting ? P.sprintSpeed : P.walkSpeed) * settings.speed;
   if (p.ads > 0.5) speed *= 0.65;
   const sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
   const wishX = (fx * cos + fz * sin) * speed;
@@ -2011,7 +2014,7 @@ document.addEventListener('mouseup', (e) => {
 document.addEventListener('contextmenu', (e) => e.preventDefault());   // right click = aim, not a menu
 
 /* ---------- Touch controls: left thumb stick, drag-to-look, on-screen buttons ---------- */
-const DEFAULTS = { sens: 1, bs: 1, gap: 18, as: 60, arrows: 'turn', turn: 2.6, vol: 0.45, gfx: 'high', diff: 'normal' };
+const DEFAULTS = { autorun: true, speed: 1.2, sens: 1, bs: 1, gap: 18, as: 60, arrows: 'turn', turn: 2.6, vol: 0.45, gfx: 'high', diff: 'normal' };
 const settings = Object.assign({}, DEFAULTS, store.get('ironarena.settings', {}));
 if (!store.get('ironarena.settings', null)) settings.sens = store.get('ironarena.sens', 1);
 const DIFF = { easy: { dmg: 0.5, aim: 1.5 }, normal: { dmg: 1, aim: 1 }, hard: { dmg: 1.5, aim: 0.7 } };
@@ -2115,7 +2118,8 @@ holdButton('b-jump', () => { touch.jump = true; });
 holdButton('b-reload', () => startReload());
 holdButton('b-run', () => { touch.sprint = !touch.sprint; if (touch.sprint && touch.crouch) { touch.crouch = false; setTouchBtn('b-crouch', false); } setTouchBtn('b-run', touch.sprint); });
 holdButton('b-cam', () => toggleView());
-$('b-pause').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); pauseGame(); });
+$('b-pause').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
+$('b-pause').addEventListener('click', (e) => { e.stopPropagation(); pauseGame(); });
 
 document.addEventListener('mousemove', (e) => {
   if (state.mode !== 'playing' || document.pointerLockElement !== canvas) return;
@@ -2229,12 +2233,12 @@ $('quit-btn').addEventListener('click', () => { gameOverQuiet(); showMenu(); });
 $('menu-btn').addEventListener('click', () => showMenu());
 /* ---------- Settings screen ---------- */
 let settingsFrom = 'menu';
-const SLIDERS = { bs: (v) => Math.round(v * 100) + '%', gap: (v) => v + 'px', as: (v) => v + 'px', turn: (v) => (+v).toFixed(1), sens: (v) => Math.round(v * 100) + '%', vol: (v) => Math.round(v * 100) + '%' };
-const GROUPS = { arrows: 'g-arrows', view: 'g-view', gfx: 'g-gfx', diff: 'g-diff' };
+const SLIDERS = { speed: (v) => Math.round(v * 100) + '%', bs: (v) => Math.round(v * 100) + '%', gap: (v) => v + 'px', as: (v) => v + 'px', turn: (v) => (+v).toFixed(1), sens: (v) => Math.round(v * 100) + '%', vol: (v) => Math.round(v * 100) + '%' };
+const GROUPS = { autorun: 'g-autorun', arrows: 'g-arrows', view: 'g-view', gfx: 'g-gfx', diff: 'g-diff' };
 function syncSettingsUI() {
   for (const k in SLIDERS) { $('s-' + k).value = settings[k]; $('o-' + k).textContent = SLIDERS[k](settings[k]); }
   for (const k in GROUPS) {
-    const v = k === 'view' ? view.mode : settings[k];
+    const v = k === 'view' ? view.mode : k === 'autorun' ? (settings.autorun ? 'on' : 'off') : settings[k];
     $(GROUPS[k]).querySelectorAll('button').forEach((b) => b.classList.toggle('sel', b.dataset.v === v));
   }
 }
@@ -2242,7 +2246,7 @@ for (const k in SLIDERS) $('s-' + k).addEventListener('input', (e) => { settings
 for (const k in GROUPS) $(GROUPS[k]).addEventListener('click', (e) => {
   const v = e.target.closest('button')?.dataset.v; if (!v) return;
   if (k === 'view') { if (view.mode !== v) { view.mode = v; store.set('ironarena.view2', v); applyView(); } }
-  else { settings[k] = v; saveSettings(); applySettings(); }
+  else { settings[k] = k === 'autorun' ? v === 'on' : v; saveSettings(); applySettings(); }
   syncSettingsUI();
 });
 function openSettings(from) {
@@ -2264,7 +2268,8 @@ $('settings-reset').addEventListener('click', () => {
 });
 $('settings-btn').addEventListener('click', () => openSettings('menu'));
 $('pause-settings-btn').addEventListener('click', () => openSettings('pause'));
-$('b-gear').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); openSettings('game'); });
+$('b-gear').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
+$('b-gear').addEventListener('click', (e) => { e.stopPropagation(); openSettings('game'); });   // on click, so the lifting finger can't tap the menu underneath
 window.__vol = settings.vol;
 applySettings();
 function gameOverQuiet() {   // leave a run from the pause menu without the game-over screen
